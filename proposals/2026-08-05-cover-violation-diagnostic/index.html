@@ -1,0 +1,1930 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A cross-platform, Rust-powered reverse engineering and decompilation framework.">
+      
+      
+      
+        <link rel="canonical" href="https://sjkim1127.github.io/Fission/proposals/2026-08-05-cover-violation-diagnostic/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Decompiler Change Proposal: Cover Violation Diagnostic - Fission</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#decompiler-change-proposal-cover-violation-diagnostic" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fission" class="md-header__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fission
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Decompiler Change Proposal: Cover Violation Diagnostic
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../PROJECT_MAP/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Project Map
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CLI/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../QUALITY_METRICS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quality Metrics
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../EVALUATION/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../MALWARE_SAMPLE_POLICY/" class="md-tabs__link">
+          
+  
+  
+  Developer Policies
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../changelog/v0.2.3/" class="md-tabs__link">
+          
+  
+  
+  Release Notes
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fission" class="md-nav__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fission
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PROJECT_MAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CLI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY_METRICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EVALUATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Policies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Policies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MALWARE_SAMPLE_POLICY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Malware Sample Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VERSIONING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-baseline-anchor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Baseline Anchor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-owner-proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Owner Proof
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-generality-invariant-proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Generality / Invariant Proof
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-risk-and-ownership-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Risk And Ownership Check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-validation-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Validation Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Validation Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-measurement-fission-benchmarkcorpusdev-all-binaries-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus measurement (fission-benchmark/corpus/dev, all binaries, --all)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-ai-ghidra-firewall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. AI / Ghidra Firewall
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-review-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Review Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-attempted-corrective-fix-reverted-documenting-for-the-next-attempt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Attempted corrective fix (reverted -- documenting for the next attempt)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-real-insertion-path-found-corrective-fix-landed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Real insertion path found, corrective fix landed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Real insertion path found, corrective fix landed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-diagnostic-re-measurement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus diagnostic re-measurement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-type_match-semantic_score-measurement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus type_match / semantic_score measurement
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-second-pass-generalizing-the-guard-to-the-remaining-name-reuse-branches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Second pass: generalizing the guard to the remaining name-reuse branches
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Second pass: generalizing the guard to the remaining name-reuse branches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-diagnostic-re-measurement-dev-adversarial-corpus-481" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus diagnostic re-measurement (dev + adversarial corpus, 48+1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="decompiler-change-proposal-cover-violation-diagnostic">Decompiler Change Proposal: Cover Violation Diagnostic<a class="headerlink" href="#decompiler-change-proposal-cover-violation-diagnostic" title="Permanent link">&para;</a></h1>
+<p>Date: 2026-08-05</p>
+<h2 id="1-baseline-anchor">1. Baseline Anchor<a class="headerlink" href="#1-baseline-anchor" title="Permanent link">&para;</a></h2>
+<p>This is a measurement-only diagnostic. It changes no materialize output and
+makes no decompiler-quality claim by itself. It exists to answer a factual
+question raised against <code>docs/audits/2026-07-25-ghidra-vs-fission-unimplemented.md</code>'s
+P0 item ("Cover 기반 HighVariable 병합... 미완성"): is that still true, and
+if a real gap remains, how big is it on real corpus data?</p>
+<p>Current code facts (2026-08-05):</p>
+<ul>
+<li><code>crates/fission-midend-core/src/ir/ssa.rs</code> +
+  <code>crates/fission-pcode/src/midend/builder/scalar_ssa.rs</code> already compute
+  <code>SsaHighVariable</code> groups with an explicit <code>cover</code> (per
+  <code>docs/proposals/2026-07-26-heritage-memory-promotion-and-cover-coalescing.md</code>,
+  landed one day after the audit). This part of the audit's premise is
+  stale.</li>
+<li>Zero production call sites read <code>NirScalarSsa.high_variables</code> /
+  <code>value_high_variables</code> (confirmed by exhaustive grep across <code>crates/</code>).
+  The data is computed and validated by its own tests but has no effect on
+  rendered output.</li>
+<li>The actual name-merge decisions live in
+  <code>crates/fission-pcode/src/midend/builder/materialize/mod.rs</code> and
+  <code>cross_block.rs</code> (~3800 lines): a reachability-proof system (<code>prove_definition_reaches_block_entry</code>,
+  <code>merge_binding_name_for_materialized_output</code>, <code>explicit_merge_bindings</code>),
+  not the "simple name matching" the audit's phrasing suggests.</li>
+</ul>
+<h2 id="2-owner-proof">2. Owner Proof<a class="headerlink" href="#2-owner-proof" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] Shared SSA substrate (Cover/HighVariable -- already landed, cited above)</li>
+<li>[x] Builder diagnostic (new, this proposal)</li>
+<li>[ ] Normalize</li>
+<li>[ ] Structuring</li>
+<li>[ ] Printer</li>
+</ul>
+<p>Ghidra reference:</p>
+<ul>
+<li><code>Merge::mergeTest</code> / <code>HighIntersectTest</code>: two <code>Varnode</code>s may only join one
+  <code>HighVariable</code> when their <code>Cover</code>s do not intersect. This proposal ports
+  the <em>intersection test itself</em> as a read-only cross-check, not the merge
+  policy around it (forced vs. speculative merge categories, <code>mergeAdjacent</code>,
+  <code>mergeMultiEntry</code>, etc. remain out of scope).</li>
+</ul>
+<p>Fission owner:</p>
+<ul>
+<li>New: <code>crates/fission-pcode/src/midend/builder/materialize/cover_diagnostics.rs</code></li>
+<li>Reads (does not write): <code>PreviewBuilder::materialized_vns</code>,
+  <code>PreviewBuilder::explicit_merge_bindings</code>, <code>PreviewBuilder::scalar_ssa</code></li>
+</ul>
+<h2 id="3-generality-invariant-proof">3. Generality / Invariant Proof<a class="headerlink" href="#3-generality-invariant-proof" title="Permanent link">&para;</a></h2>
+<p>Cover-violation rule:</p>
+<blockquote>
+<p>For each rendered PreHIR binding name, resolve every SSA definition site
+(<code>materialized_vns</code>, keyed by <code>(varnode, def_addr, def_seq)</code>) and every
+block-entry merge point (<code>explicit_merge_bindings</code>, keyed by
+<code>(block_idx, varnode)</code>) that produced that name back to its
+<code>SsaHighVariableId</code> via <code>NirScalarSsa.operation_outputs</code> /
+<code>NirScalarSsa.phis</code>. If two different <code>SsaHighVariableId</code>s map to the same
+name AND their <code>cover</code> intervals intersect (same block, overlapping
+half-open <code>[start, end_exclusive)</code> range), record a violation. Same-id
+sharing and non-intersecting different-id sharing are never violations
+(both are legitimate: the same value, or two values that are never live at
+the same program point).</p>
+</blockquote>
+<p>Conservative by construction: only whole-varnode (<code>byte_offset == 0</code>)
+definitions are resolved; a partial/sub-register piece is skipped rather
+than guessed at (a wrong guess here would misreport a "measured" count).</p>
+<p>The rule uses only already-computed SSA data (Cover, HighVariable id,
+operation-output/phi maps) and the builder's own existing
+<code>materialized_vns</code>/<code>explicit_merge_bindings</code> maps. No ISA, function,
+address, compiler, or corpus condition.</p>
+<h2 id="4-risk-and-ownership-check">4. Risk And Ownership Check<a class="headerlink" href="#4-risk-and-ownership-check" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Purely additive: a new module + one <code>if preview_builder_diag_enabled()</code>
+  call site at the end of <code>build_hir</code>, after
+  <code>trace_materialize_owner_repartition_summary()</code>. No existing function's
+  control flow, return value, or materialize output changes.</li>
+<li>Diagnostic is <code>FISSION_PREVIEW_DIAG</code>-gated (existing env var, existing
+  convention in this file) -- zero cost and zero output change when unset
+  (the default).</li>
+<li>No new dependency, runtime vendor access, or ISA-local rule.</li>
+</ul>
+<h2 id="5-validation-matrix">5. Validation Matrix<a class="headerlink" href="#5-validation-matrix" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] Unit: intersecting covers under the same name are flagged
+      (<code>intersecting_covers_under_same_name_are_flagged</code>).</li>
+<li>[x] Unit: non-intersecting covers under the same name are not flagged
+      (<code>nonintersecting_covers_under_same_name_are_not_flagged</code>).</li>
+<li>[x] Unit: the same <code>HighVariable</code> under the same name is never flagged,
+      regardless of cover shape (<code>same_high_variable_under_same_name_is_never_flagged</code>).</li>
+<li>[x] Unit: distinct names are never flagged even with intersecting covers
+      (<code>distinct_names_are_never_flagged_even_if_covers_intersect</code>).</li>
+<li>[x] Unit: two p-code ops at the same source instruction address sharing a
+      name are never flagged even with intersecting covers
+      (<code>same_instruction_widening_chain_is_never_flagged</code>) -- added after
+      tracing a real corpus false positive (below).</li>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 962 passed, 1 skipped (baseline
+      unchanged).</li>
+<li>[x] <code>cargo nextest run --workspace</code>: no new failures vs. established
+      baseline (7 pre-existing unrelated <code>fission-emulator</code> failures).</li>
+</ul>
+<h3 id="real-corpus-measurement-fission-benchmarkcorpusdev-all-binaries-all">Real-corpus measurement (<code>fission-benchmark/corpus/dev</code>, all binaries, <code>--all</code>)<a class="headerlink" href="#real-corpus-measurement-fission-benchmarkcorpusdev-all-binaries-all" title="Permanent link">&para;</a></h3>
+<p><code>FISSION_PREVIEW_DIAG=1 fission_cli decomp &lt;binary&gt; --all</code> across every
+<code>.exe</code> in the dev corpus, ~3338 functions attempted:</p>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Functions with &gt;=1 raw violation</td>
+<td style="text-align: right;">452</td>
+</tr>
+<tr>
+<td>Total raw violation instances</td>
+<td style="text-align: right;">11,006</td>
+</tr>
+<tr>
+<td>...of which x86 status flags (<code>zf</code>/<code>cf</code>/<code>of</code>/<code>sf</code>/<code>pf</code>)</td>
+<td style="text-align: right;">9,928 (90.2%)</td>
+</tr>
+<tr>
+<td><strong>Non-flag violation instances</strong></td>
+<td style="text-align: right;"><strong>1,078</strong></td>
+</tr>
+<tr>
+<td><strong>Distinct functions with &gt;=1 non-flag violation</strong></td>
+<td style="text-align: right;"><strong>235 (~7% of scanned functions)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Flag registers (<code>zf</code>/<code>cf</code>/<code>of</code>/<code>sf</code>/<code>pf</code>) dominate the raw count and are a
+known, separately-handled naming convention (each CMP/TEST-style op
+redefines them; they are consumed immediately by the following branch, not
+modeled as ordinary mergeable variables) -- excluded from the headline
+number as a likely non-bug category, not asserted as definitely benign.</p>
+<p>Top <strong>non-flag</strong> violation name families (all real corpus rows, examples
+verified against the source): generic temps <code>xVar*</code>/<code>uVar*</code> (initially 698
+instances, see revision below), hardware GPRs <code>edi</code>/<code>ebx</code>/<code>edx</code>/<code>esi</code>/<code>ecx</code>/<code>rax</code>
+(165), XMM lane pieces <code>xmm*_qa</code>/<code>xmm*_qb</code>.</p>
+<p><strong>Revision after tracing a concrete case.</strong> Manually tracing
+<code>apply_binop</code>'s <code>uVar14</code> collision found a second false-positive category:
+a single source instruction's p-code expansion legitimately touching the
+same storage at different widths (e.g. a CALL's 32-bit <code>EAX</code> result
+immediately zero-extended into 64-bit <code>RAX</code>, both p-code ops carrying the
+call's own address). The SSA model correctly treats these as distinct
+values, but sharing a display name between them is the intended "same
+value, different width view" case, not the cross-value collision this
+diagnostic targets. Added a same-source-instruction-address exemption
+(<code>scan_cover_violations</code>, plus regression test
+<code>same_instruction_widening_chain_is_never_flagged</code>). Re-measuring after
+this fix:</p>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">Before</th>
+<th style="text-align: right;">After same-instruction exemption</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Non-flag violation instances</td>
+<td style="text-align: right;">1,078</td>
+<td style="text-align: right;">822</td>
+</tr>
+<tr>
+<td>Distinct functions with &gt;=1 non-flag violation</td>
+<td style="text-align: right;">235</td>
+<td style="text-align: right;">215</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Conclusion</strong>: the P0 gap is real and measurable (215 functions, ~6% of
+the dev corpus scanned), well below the raw 11,006 count once both the
+flag-register convention and the same-instruction widening-chain pattern
+are excluded. <code>xVar*</code>/<code>uVar*</code> generic-temp collisions remain the largest
+single category (608 of 822, 74%) and the most direct match for the
+audit's "return/join noise" symptom.</p>
+<h2 id="6-ai-ghidra-firewall">6. AI / Ghidra Firewall<a class="headerlink" href="#6-ai-ghidra-firewall" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Ghidra is used as a cleanroom algorithm and invariant reference only
+  (<code>Merge::mergeTest</code> / <code>HighIntersectTest</code> cited for the intersection-test
+  invariant; no C++ copied).</li>
+<li>No production dependency points into <code>vendor/</code>.</li>
+</ul>
+<h2 id="7-review-notes">7. Review Notes<a class="headerlink" href="#7-review-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] Canonical owner identified (materialize; read-only diagnostic, not a
+      new output pass).</li>
+<li>[x] No printer/UI/benchmark repair.</li>
+<li>[x] No hardcoded function/address/binary/corpus rule.</li>
+<li>[x] Quality claim scoped to what was measured (a violation <em>count</em>, not a
+      type_match/semantic_score movement -- no corrective change has landed
+      yet, so no such movement exists to claim).</li>
+</ul>
+<h2 id="8-attempted-corrective-fix-reverted-documenting-for-the-next-attempt">8. Attempted corrective fix (reverted -- documenting for the next attempt)<a class="headerlink" href="#8-attempted-corrective-fix-reverted-documenting-for-the-next-attempt" title="Permanent link">&para;</a></h2>
+<p>Tried wiring a live guard at <code>ensure_temp_binding_for_output</code>'s and
+<code>ensure_explicit_merge_binding_for_block</code>'s generic-temp
+(<code>next_unused_temp_binding_name</code>) fallback: reject a candidate name already
+claimed by a different, interfering <code>SsaHighVariable</code>, allocating a fresh
+name instead (Ghidra's <code>mergeTest</code> failure path -- the merge is simply not
+performed).</p>
+<p><strong>Result: measurably no effect.</strong> Re-running the same real-corpus scan
+after the guard landed produced byte-identical counts (822 / 215,
+including the same <code>apply_binop</code> <code>uVar14</code> case used to design it). Tracing
+<code>apply_binop</code> directly (<code>raw-pcode</code> dump + entry/exit instrumentation on
+<code>ensure_temp_binding_for_output</code>) found the second conflicting definition
+(<code>def_addr=0x4014fd def_seq=42</code>, a <code>Copy</code> into <code>EAX</code> at p-code op index 42)
+<strong>never calls <code>ensure_temp_binding_for_output</code> at all</strong> -- yet its
+<code>(varnode, def_addr, def_seq)</code> key is present in <code>materialized_vns</code> mapped
+to <code>uVar14</code>. There is exactly one <code>.insert()</code> call site into
+<code>materialized_vns</code> in the entire crate (re-verified), and that site is
+inside the very function that was never called for this key. The real
+insertion mechanism for this case was not found before time ran out on
+this session; it is not <code>next_unused_temp_binding_name</code> producing a
+non-fresh name (that function's freshness check against the append-only
+<code>self.temps</code> is airtight and was verified by direct trace) -- something
+else in <code>materialize</code> is writing this key, or a different, not-yet-found
+path shares state with it.</p>
+<p><strong>Reverted</strong> (<code>git checkout</code> on <code>state.rs</code>/<code>init.rs</code>/<code>mod.rs</code>, guard
+methods removed from <code>cover_diagnostics.rs</code>) rather than ship inert code.
+What remains landed is only the verified diagnostic and its
+same-instruction-exemption refinement (Section 5).</p>
+<h2 id="9-real-insertion-path-found-corrective-fix-landed">9. Real insertion path found, corrective fix landed<a class="headerlink" href="#9-real-insertion-path-found-corrective-fix-landed" title="Permanent link">&para;</a></h2>
+<p>Following the recommended next step: a proper multi-line-aware regex scan
+(<code>materialized_vns\s*\.\s*insert\s*\(</code> over the whole crate, catching
+<code>.insert(</code> calls split across lines that the earlier single-line grep in
+Section 8 missed) found <strong>three</strong> insertion sites, not one --
+<code>ensure_temp_binding_for_output</code> (mod.rs), <code>bind_materialized_output_to_fresh_temp</code>
+(mod.rs, always-fresh, no cache check), and
+<code>bind_materialized_output_to_existing_name</code> (loop_carried/mod.rs, binds an
+op directly to a caller-supplied <em>existing</em> name string with <strong>no</strong>
+freshness or collision check at all).</p>
+<p>Tagging <code>bind_materialized_output_to_existing_name</code>'s ~9 call sites (the
+big <code>if let / else if let</code> chain in <code>materialize/mod.rs</code> around line 1000
+choosing which name-reuse heuristic applies) and re-tracing <code>apply_binop</code>
+found the exact culprit: <code>same_block_prior_register_binding_name</code> -&gt;
+<code>prove_same_block_register_join</code>. This heuristic exists for cmov-style
+same-block register redefinition chains (a default value, then a
+conditional override -- legitimately one logical value). Its guard
+(<code>output_has_consumed_interval_before_redefinition</code>) checks whether the
+<em>current</em> (new) definition is itself used-then-redefined later in the
+block, but does <strong>not</strong> check anything about the relationship between the
+current definition and the <em>prior</em> one it's about to reuse the name of.
+For <code>apply_binop</code>'s three sequential, independent lookup-table reads (each
+passing through <code>EAX</code> for an unrelated purpose), the last one has no
+further redefinition after it in the block, so the guard never fires, and
+it silently inherits <code>uVar14</code> from an earlier, semantically unrelated
+<code>EAX</code> definition.</p>
+<p><strong>Fix</strong>: added <code>PreviewBuilder::cover_proves_distinct_and_interfering</code>
+(<code>cover_diagnostics.rs</code>) -- the live counterpart of <code>scan_cover_violations</code>'s
+core test, resolving both definitions' <code>SsaHighVariableId</code> via the same
+already-computed Cover data and returning <code>true</code> only when the SSA model
+positively proves them distinct and interfering (permissive on missing
+data, so it only ever blocks what it can prove, never blocks on
+uncertainty). Wired into <code>prove_same_block_register_join</code>'s backward search:
+skip a candidate proven to interfere and keep looking further back, exactly
+mirroring <code>mergeTest</code>'s "this merge doesn't happen" (not an error).</p>
+<h3 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 962 passed, 1 skipped (no
+      change -- including all existing <code>same_block_prior_register_binding_name</code>
+      / cmov-chain tests).</li>
+<li>[x] <code>cargo nextest run --workspace</code>: no regression in <code>fission-pcode</code> or
+      any crate depending on it; two <code>fission-emulator</code> JIT-differential
+      tests timed out under concurrent load from this session's own
+      Docker/benchmark runs (that crate has no dependency in the other
+      direction -- <code>fission-pcode</code> does not depend on <code>fission-emulator</code> --
+      and the same tests pass reliably at baseline; not attributed to this
+      change).</li>
+</ul>
+<h3 id="real-corpus-diagnostic-re-measurement">Real-corpus diagnostic re-measurement<a class="headerlink" href="#real-corpus-diagnostic-re-measurement" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">Before this fix</th>
+<th style="text-align: right;">After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Non-flag violation instances</td>
+<td style="text-align: right;">822</td>
+<td style="text-align: right;"><strong>137</strong></td>
+</tr>
+<tr>
+<td>Distinct functions with &gt;=1 non-flag violation</td>
+<td style="text-align: right;">215</td>
+<td style="text-align: right;"><strong>53</strong></td>
+</tr>
+<tr>
+<td><code>xVar*</code>/<code>uVar*</code> instances specifically</td>
+<td style="text-align: right;">608</td>
+<td style="text-align: right;"><strong>25</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="real-corpus-type_match-semantic_score-measurement">Real-corpus type_match / semantic_score measurement<a class="headerlink" href="#real-corpus-type_match-semantic_score-measurement" title="Permanent link">&para;</a></h3>
+<p>Isolated before/after on the exact same corpus and profile (this fix only,
+<code>fission-benchmark/scripts/compare_runs.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Before</th>
+<th style="text-align: right;">After</th>
+<th style="text-align: right;">Delta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type_match</code></td>
+<td style="text-align: right;">0.4425</td>
+<td style="text-align: right;">0.4456</td>
+<td style="text-align: right;"><strong>+0.0031</strong></td>
+</tr>
+<tr>
+<td><code>semantic_score</code></td>
+<td style="text-align: right;">0.5044</td>
+<td style="text-align: right;">0.5131</td>
+<td style="text-align: right;"><strong>+0.0087</strong></td>
+</tr>
+<tr>
+<td><code>ok</code> rows</td>
+<td style="text-align: right;">182</td>
+<td style="text-align: right;">185</td>
+<td style="text-align: right;"><strong>+3</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Row-level: 5 fixed (<code>accumulate_pairs</code>/<code>find_pair_value</code>/<code>kv_lookup</code>
+gcc-m32 -O0 <code>runtime_error</code>-&gt;<code>ok</code>; <code>reverse_string</code> gcc-m32 -O0 and
+<code>sum_array</code> gcc -O2 <code>assertion_fail</code>-&gt;<code>ok</code>), 2 regressed (<code>clamp</code> gcc-m32
+-O2, <code>power</code> clang -O2, both <code>ok</code>-&gt;<code>assertion_fail</code>). Net positive but not
+side-effect-free -- reported in full rather than only the favorable
+direction.</p>
+<p><strong>Bottom line</strong>: the P0 gap ("Cover 기반 HighVariable 병합... 미완성") is
+now genuinely wired from analysis into a live decompiler decision, with a
+real (if modest) measured improvement and an honest accounting of the two
+regressions it introduced. The <code>edi</code>/<code>ebx</code>/<code>rax</code>-family hardware-register
+violations (44/2/7 of the remaining 137) and the <code>st*</code>/x87 family (36) were
+deliberately left untouched -- they route through different heuristics
+(<code>full_width_primary_return_surface_name</code>, <code>primary_return_live_out_name</code>,
+cross-block <code>merge_lhs_name</code>) not covered by this fix, and are the natural
+next slice.</p>
+<h2 id="10-second-pass-generalizing-the-guard-to-the-remaining-name-reuse-branches">10. Second pass: generalizing the guard to the remaining name-reuse branches<a class="headerlink" href="#10-second-pass-generalizing-the-guard-to-the-remaining-name-reuse-branches" title="Permanent link">&para;</a></h2>
+<p><code>materialize/mod.rs</code>'s output-binding chain has 8 branches that call
+<code>bind_materialized_output_to_existing_name</code> with a name computed by their
+own reachability proof (<code>loop_carried_lhs_name</code>, <code>direct_successor_merge_lhs_name</code>,
+<code>merge_lhs_name</code>, <code>live_register_lhs_name_for_partial_gpr_join_family</code>,
+<code>live_register_lhs_name_for_passthrough_join_store_producer</code>,
+<code>live_register_lhs_name_for_safe_missing_merge</code>,
+<code>full_width_primary_return_surface_name</code>, <code>same_block_prior_register_binding_name</code>
+(already guarded), <code>primary_return_live_out_name</code>). Section 9 only guarded
+one. Attribution tracing (a temporary <code>[BIND_BRANCH]</code> eprintln tagging each
+branch plus its resolved <code>SsaHighVariableId</code>, removed after use) against the
+real corpus's remaining <code>edi</code> violation (<code>__pei386_runtime_relocator</code>,
+<code>control_flow_gcc-m32_O0.exe</code>) traced the true mechanism precisely: one
+<code>edi</code> definition (<code>HighVariable(546)</code>) got the raw name via
+<code>ensure_temp_binding_for_output</code>'s already-existing "reuse the hardware
+register name if <code>!self.temps.contains_key(&amp;candidate)</code>" fallback (line
+~703 in <code>builder/mod.rs</code>, pre-existing, not part of this session's earlier
+fix) -- purely an accident of block-visitation order, since it ran <em>before</em>
+any of the other branches touched <code>edi</code>. A second, unrelated <code>edi</code>
+definition (<code>HighVariable(146)</code>, a genuine loop-carried induction value)
+then claimed the same raw name later via <code>loop_carried_lhs_name</code> and
+<code>live_register_lhs_name_for_safe_missing_merge</code>, with neither branch ever
+checking whether <code>edi</code> was already spoken for by an interfering value.</p>
+<p><strong>First attempt (reverted)</strong>: gated <code>ensure_temp_binding_for_output</code>'s raw-
+name fallback with a whole-function-scoped
+<code>storage_key_is_cover_ambiguous</code> check (any 2+ interfering <code>SsaHighVariable</code>s
+ever sharing this storage key anywhere in the function -&gt; refuse the raw
+name for anyone). This fixed the <code>edi</code> case but broke
+<code>loop_carried_stack_param_seed_preferred_over_anonymous_merge_temp</code>
+(caught by <code>cargo nextest run -p fission-pcode</code>, confirmed as a real
+regression by re-running on the pre-session baseline commit). Root cause:
+this check is too coarse. A legitimate <code>Copy ecx &lt;- eax</code> inside a loop body
+speculatively unions <code>ecx</code>'s SSA value into <code>eax</code>'s (much larger,
+loop-spanning) <code>HighVariable</code> per <code>build_out_of_ssa_facts</code>'s own Copy-chain
+merge rule -- correct, since after that copy <code>ecx</code> and <code>eax</code> really do hold
+the same value. But <code>ecx</code>'s storage key is <em>also</em> independently touched by
+an unrelated same-block redefinition (<code>ecx = ecx &amp; 1</code>) that never actually
+asks for the raw <code>ecx</code> name (it gets a normal synthetic name via a totally
+different path). The whole-function "any interfering pair anywhere"
+check has no way to know the second value was never going to collide in
+practice, and blocked a safe case. Reverted in favor of an order-dependent,
+already-happened-collisions-only check, matching Section 9's guard
+philosophy exactly rather than trying to prove safety in the abstract.</p>
+<p><strong>Real fix</strong>: <code>PreviewBuilder::cover_proves_existing_name_claim_interferes</code>
+(<code>cover_diagnostics.rs</code>) -- given a candidate name, scans
+<code>materialized_vns</code>/<code>explicit_merge_bindings</code> (the same sources
+<code>scan_cover_violations</code> reads) for any <em>already-bound</em> entry under that
+exact name whose <code>SsaHighVariableId</code> is different from and interferes with
+the value currently being bound. Only ever blocks a collision that has
+concretely already happened, never speculates about bindings not yet made
+-- the same permissive-on-uncertainty contract as
+<code>cover_proves_distinct_and_interfering</code>. Wired as a <code>.filter(...)</code> gate on
+each of the 7 remaining name-reuse branches (all except
+<code>same_block_prior_register_binding_name</code>, already covered by Section 9's
+narrower same-block check): when a branch's candidate name is already
+claimed by an interfering value, that branch is treated as if it returned
+<code>None</code> and the chain falls through to the next candidate, ultimately to
+<code>ensure_temp_binding_for_output</code>'s fresh-name fallback.</p>
+<h3 id="validation_1">Validation<a class="headerlink" href="#validation_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 962 passed, 1 skipped -- including
+      the previously-broken <code>loop_carried_stack_param_seed_preferred_over_anonymous_merge_temp</code>.</li>
+<li>[x] <code>cargo nextest run --workspace</code> (excluding the known-slow
+      <code>selfjit_matches_cranelift</code> differential tests): 938 passed, 7 failed
+      -- all 7 failures are the exact same pre-existing, unrelated
+      <code>fission-emulator</code> tests already established as baseline earlier this
+      session (<code>diag_alloc_meta</code>/<code>diag_livelock</code>/<code>diag_expand_stall</code>/
+      <code>srd_semantic_replay</code>/<code>static_crt_profile</code> x2), not caused by this
+      change.</li>
+<li>[x] Concrete repro (<code>__pei386_runtime_relocator</code>,
+      <code>control_flow_gcc-m32_O0.exe</code>, addr <code>0x401bb0</code>): <code>edi</code> violation gone.</li>
+<li>[x] All temporary attribution tracing (<code>[BIND_BRANCH]</code>,
+      <code>debug_high_variable_id</code>, <code>FISSION_AMBIG_TRACE</code>) removed after use;
+      only the durable guard remains.</li>
+</ul>
+<h3 id="real-corpus-diagnostic-re-measurement-dev-adversarial-corpus-481">Real-corpus diagnostic re-measurement (dev + adversarial corpus, 48+1<a class="headerlink" href="#real-corpus-diagnostic-re-measurement-dev-adversarial-corpus-481" title="Permanent link">&para;</a></h3>
+<p>binaries, ~452 functions)</p>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">After Section 9</th>
+<th style="text-align: right;">After this pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Non-flag violation instances</td>
+<td style="text-align: right;">137</td>
+<td style="text-align: right;"><strong>7</strong></td>
+</tr>
+<tr>
+<td>Distinct functions with &gt;=1 non-flag violation</td>
+<td style="text-align: right;">53</td>
+<td style="text-align: right;"><strong>6</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Remaining 7: <code>xmm0_wh</code> (2), <code>rax</code> (2), <code>xVar6</code>/<code>uVar70</code>/<code>rsi</code> (1 each) --
+scattered, no longer dominated by one branch/register family. The
+<code>edi</code>/<code>esi</code>/<code>ecx</code>/<code>eax</code>/<code>ebx</code>/<code>r8</code>/<code>r9</code>/<code>edx</code>/<code>st0</code>-<code>st6</code> clusters that made
+up the bulk of the 137 are gone.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

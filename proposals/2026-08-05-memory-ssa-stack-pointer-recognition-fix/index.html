@@ -1,0 +1,2041 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A cross-platform, Rust-powered reverse engineering and decompilation framework.">
+      
+      
+      
+        <link rel="canonical" href="https://sjkim1127.github.io/Fission/proposals/2026-08-05-memory-ssa-stack-pointer-recognition-fix/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Decompiler Change Proposal: Memory-Promotion-SSA Stack-Pointer Recognition Fix - Fission</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#decompiler-change-proposal-memory-promotion-ssa-stack-pointer-recognition-fix" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fission" class="md-header__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fission
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Decompiler Change Proposal: Memory-Promotion-SSA Stack-Pointer Recognition Fix
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../PROJECT_MAP/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Project Map
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CLI/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../QUALITY_METRICS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quality Metrics
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../EVALUATION/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../MALWARE_SAMPLE_POLICY/" class="md-tabs__link">
+          
+  
+  
+  Developer Policies
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../changelog/v0.2.3/" class="md-tabs__link">
+          
+  
+  
+  Release Notes
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fission" class="md-nav__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fission
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PROJECT_MAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CLI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY_METRICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EVALUATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Policies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Policies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MALWARE_SAMPLE_POLICY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Malware Sample Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VERSIONING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-a-deeper-problem-than-unconsumed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. A deeper problem than "unconsumed"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Root cause
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Fix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-what-this-does-not-do-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. What this does not do yet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-second-pass-a-memory-coverhighvariable-layer-and-why-its-not-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Second pass: a memory Cover/HighVariable layer, and why it's not ready
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Second pass: a memory Cover/HighVariable layer, and why it&#39;s not ready">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-measurement-found-a-real-signal-but-not-yet-trustworthy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus measurement: found a real signal, but not yet trustworthy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-status-vs-the-original-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest status vs. the original plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-third-pass-the-phi-connectivity-gap-was-write_effect-not-the-union-find" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Third pass: the phi-connectivity gap was write_effect, not the union-find
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Third pass: the phi-connectivity gap was write_effect, not the union-find">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-re-measurement-dev-realworld-holdout-adversarial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus re-measurement (dev + realworld + holdout + adversarial)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-left-a-second-separate-larger-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's left: a second, separate, larger gap
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-fourth-pass-real-escape-analysis-closing-the-call-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Fourth pass: real escape analysis, closing the Call gap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Fourth pass: real escape analysis, closing the Call gap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-corpus-re-measurement-dev-realworld-holdout-adversarial_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-corpus re-measurement (dev + realworld + holdout + adversarial)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-left-a-precision-limit-not-a-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's left: a precision limit, not a bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-fifth-pass-wiring-into-selflocals-the-original-goal-finally-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Fifth pass: wiring into self.locals -- the original goal, finally live
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Fifth pass: wiring into self.locals -- the original goal, finally live">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-coverage-since-the-real-corpus-has-zero-true-positives-to-test-against" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test coverage (since the real corpus has zero true positives to test against)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-bottom-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest bottom line
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="decompiler-change-proposal-memory-promotion-ssa-stack-pointer-recognition-fix">Decompiler Change Proposal: Memory-Promotion-SSA Stack-Pointer Recognition Fix<a class="headerlink" href="#decompiler-change-proposal-memory-promotion-ssa-stack-pointer-recognition-fix" title="Permanent link">&para;</a></h1>
+<p>Date: 2026-08-05</p>
+<h2 id="1-context">1. Context<a class="headerlink" href="#1-context" title="Permanent link">&para;</a></h2>
+<p>Following the register-name Cover-violation work earlier today
+(<code>2026-08-05-cover-violation-diagnostic.md</code>), the user asked to keep
+surveying the codebase for "implemented but never wired up" subsystems.
+The standing, explicitly flagged candidate was the memory-promotion-SSA
+subsystem landed 2026-07-26
+(<code>docs/proposals/2026-07-26-heritage-memory-promotion-and-cover-coalescing.md</code>):
+<code>NirScalarSsa.memory_values</code> / <code>memory_inputs</code> / <code>memory_operation_inputs</code> /
+<code>memory_operation_outputs</code> / <code>memory_phis</code> -- exact stack/RAM address SSA
+chains, computed in <code>scalar_ssa.rs</code>, with zero external readers.</p>
+<p>The plan was to build a Cover/HighVariable-equivalent grouping layer on top
+of <code>memory_values</code> (mirroring <code>build_out_of_ssa_facts</code>), then wire it into
+<code>stack_slots.rs</code>'s flat <code>self.locals: BTreeMap&lt;i64, StackSlot&gt;</code> naming
+(which has no size field at all, so two different-sized stack variables
+placed at the same offset by the compiler at different points in a
+function would silently share one display name -- the memory-side analog
+of the register bug fixed earlier today).</p>
+<h2 id="2-a-deeper-problem-than-unconsumed">2. A deeper problem than "unconsumed"<a class="headerlink" href="#2-a-deeper-problem-than-unconsumed" title="Permanent link">&para;</a></h2>
+<p>To find concrete repro cases before designing the Cover layer, a
+diagnostic (<code>stack_slot_diagnostics.rs</code>, <code>scan_stack_slot_size_ambiguities</code>)
+was built to cross-check <code>self.locals</code>' offsets against
+<code>scalar_ssa.memory_values</code>'s Stack-region storage keys. Running it against
+the real corpus produced <strong>zero results</strong> -- including on trivially simple
+functions with obvious stack locals (<code>_checksum</code>, 3 locals, straightforward
+<code>gcc -O0</code> code).</p>
+<p>Tracing directly (temporary <code>[STACK_TRACE]</code>/<code>[MEMSSA_TRACE]</code>/<code>[PTRRES_TRACE]</code>
+eprintln instrumentation, removed after use) showed <code>NirScalarSsa.memory_values</code>
+was <strong>completely empty</strong> for this function, not just missing size
+ambiguities. This is a materially different and more foundational problem
+than "computed but unconsumed": the analysis was not producing meaningful
+data at all under realistic conditions.</p>
+<h2 id="3-root-cause">3. Root cause<a class="headerlink" href="#3-root-cause" title="Permanent link">&para;</a></h2>
+<p><code>scalar_ssa.rs</code>'s <code>resolve_pointer_value</code> recognizes the function's stack
+pointer only at its <code>SsaValueDefinition::Input</code> case:</p>
+<div class="language-rust highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">SsaValueDefinition</span><span class="p">::</span><span class="n">Input</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">value</span><span class="p">.</span><span class="n">storage</span><span class="p">.</span><span class="n">space_id</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">REGISTER_SPACE_ID</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">options</span><span class="p">.</span><span class="n">cspec_stack_pointer_offset</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">value</span><span class="p">.</span><span class="n">storage</span><span class="p">.</span><span class="n">offset</span><span class="p">))</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="o">||</span><span class="w"> </span><span class="n">PointerRange</span><span class="p">::</span><span class="n">exact</span><span class="p">(</span><span class="n">SsaMemoryRegion</span><span class="p">::</span><span class="n">Stack</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)),</span>
+</span></code></pre></div>
+<p>Two independent problems, confirmed in order via direct tracing (not
+assumed):</p>
+<ol>
+<li>
+<p><strong>Wrong space-id constant.</strong> <code>REGISTER_SPACE_ID</code> (<code>builder_types.rs</code>) is
+   the <em>legacy</em> register-space id (<code>1</code>). The active rust-sleigh backend
+   uses <code>RUST_SLEIGH_REGISTER_SPACE_ID</code> (<code>4</code>) -- confirmed directly via
+   <code>[PTRRES_TRACE]</code>: the stack-pointer SSA value's <code>storage.space_id</code> was
+   <code>4</code>, so <code>value.storage.space_id == REGISTER_SPACE_ID</code> was <code>false</code> for
+   <em>every</em> function on this backend, unconditionally. The codebase already
+   has the correct helper for this exact problem,
+   <code>is_register_space_id()</code> (checks all three known space ids -- legacy,
+   rust-sleigh, rust-sleigh-alt), used correctly everywhere else in the
+   builder (<code>stack_slots.rs</code>, <code>materialize/</code>) -- <code>resolve_pointer_value</code>
+   was simply not calling it.</p>
+</li>
+<li>
+<p><strong><code>options.cspec_stack_pointer_offset</code> is a real value in practice</strong>
+   (this contradicts an earlier, wrong hypothesis in this session that it
+   requires per-function prototype/cspec data and is therefore rarely
+   populated -- <code>[PTRRES_TRACE]</code> showed it correctly set to <code>Some(16)</code>,
+   matching the real ESP offset, for a plain stripped test binary). So (1)
+   was the actual, sole blocker; <code>cspec_stack_pointer_offset</code> was a red
+   herring. Still, <code>resolve_pointer_value</code> was the <em>only</em> place in the
+   builder depending on this cspec-sourced field for stack-pointer
+   recognition, while <code>stack_slots.rs</code>'s <code>resolve_stack_address_inner</code>
+   (the production stack-slot resolver) has always used
+   <code>options.calling_convention</code>-keyed hardcoded per-architecture register
+   offsets instead, needing no cspec data. Added a second source
+   (<code>CallingConvention::native_stack_pointer_register_offset</code>, mirroring
+   <code>resolve_stack_address_inner</code>'s existing per-arch table so a second
+   consumer doesn't have to duplicate or drift from it) as a fallback, so
+   <code>resolve_pointer_value</code> no longer has a <em>sole</em> dependency on cspec data
+   for basic stack-pointer recognition, matching <code>resolve_stack_address_inner</code>'s
+   robustness.</p>
+</li>
+</ol>
+<h2 id="4-fix">4. Fix<a class="headerlink" href="#4-fix" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>crates/fission-core/src/core/calling_convention.rs</code>: new
+  <code>CallingConvention::native_stack_pointer_register_offset(self, is_64bit) -&gt; Option&lt;u64&gt;</code>,
+  extracting the per-architecture RSP-equivalent register offset table
+  (mirrors the <code>StackBase::Rsp</code> arms already hardcoded in
+  <code>stack_slots.rs::resolve_stack_address_inner</code>, so both consumers share
+  one source of truth going forward).</li>
+<li><code>crates/fission-pcode/src/midend/builder/scalar_ssa.rs</code>:
+  <code>resolve_pointer_value</code>'s <code>Input</code> case now uses <code>is_register_space_id</code>
+  (was: <code>== REGISTER_SPACE_ID</code>) and accepts either
+  <code>options.cspec_stack_pointer_offset</code> or the new calling-convention-based
+  offset.</li>
+<li>Also landed alongside (from the original diagnostic-first plan, kept as
+  a real, currently-inert-but-ready diagnostic):
+  <code>crates/fission-pcode/src/midend/builder/memory/stack_slot_diagnostics.rs</code>'s
+  <code>scan_stack_slot_size_ambiguities</code>, gated behind <code>FISSION_PREVIEW_DIAG</code>
+  like <code>scan_cover_violations</code>.</li>
+</ul>
+<h2 id="5-validation">5. Validation<a class="headerlink" href="#5-validation" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 962 passed, 1 skipped -- zero
+      regressions from either the space-id fix or the new calling-convention
+      fallback.</li>
+<li>[x] Direct before/after decompile-output diff on a real corpus binary
+      (<code>control_flow_gcc-m32_O0.exe</code>, <code>fission_cli decomp --all</code>, git-stash
+      A/B): <strong>byte-identical</strong>. Expected and correct -- <code>dynamic_guards</code>'
+      <code>region</code>/<code>memory_values</code>/<code>memory_operation_inputs</code>/<code>memory_operation_outputs</code>/
+      <code>memory_phis</code> still have no production consumer (confirmed:
+      <code>crossing_guards</code>, the one <code>high_variables</code> field that <em>is</em> now
+      consumed via this session's earlier Cover-violation guard, is never
+      populated from <code>dynamic_guards.region</code> in a way that reaches
+      <code>high_variables_interfere</code>, which only reads <code>cover</code>). This fix
+      makes the underlying analysis produce <strong>correct data</strong>; it does not
+      yet change decompiler output, because nothing downstream reads that
+      data. That remains the next phase of work.</li>
+<li>[x] Real-corpus population check (<code>gcc</code>, <code>gcc-m32</code>, <code>clang</code> builds,
+      dev corpus): <code>memory_values</code> now non-empty for essentially every
+      function with real stack locals (e.g. <code>_checksum</code>: 0 -&gt; 13;
+      <code>rc4_init</code>: 0 -&gt; 66), confirmed via temporary
+      <code>[MEMVAL_COUNT]</code> instrumentation (removed after use).</li>
+<li>[x] <code>scan_stack_slot_size_ambiguities</code> re-run against the real corpus
+      post-fix: zero ambiguities found. A real, non-buggy result --  the
+      corpus's straightforward test-suite functions at these optimization
+      levels don't happen to exercise same-offset/different-size stack
+      slot reuse; the diagnostic is verified working (confirmed via
+      <code>memory_values</code> population) and stays in place for when it's needed
+      against harder corpora or as a live gate once a fix is designed for
+      whatever it eventually finds.</li>
+</ul>
+<h2 id="6-what-this-does-not-do-yet">6. What this does <em>not</em> do yet<a class="headerlink" href="#6-what-this-does-not-do-yet" title="Permanent link">&para;</a></h2>
+<p>This fix is a "pure enablement" change: <code>dynamic_guards</code>'s Stack-region
+resolution, <code>memory_values</code>, <code>memory_operation_inputs</code>/<code>outputs</code>, and
+<code>memory_phis</code> are now correct and populate broadly, but remain otherwise
+exactly where they were before this session -- computed, self-consistent,
+validated by their own tests, with zero external readers. <code>self.locals</code>
+(<code>stack_slots.rs</code>) still has no size discriminant and still cannot detect
+the same-offset-different-size stack-slot-reuse case this investigation
+originally set out to measure. Building a real consumer (either a memory
+Cover/HighVariable layer mirroring <code>build_out_of_ssa_facts</code>, or a lighter
+per-storage-key live-range check directly gating <code>ensure_stack_slot_binding</code>)
+is the natural next step, and now has real data to work from.</p>
+<h2 id="7-second-pass-a-memory-coverhighvariable-layer-and-why-its-not-ready">7. Second pass: a memory Cover/HighVariable layer, and why it's not ready<a class="headerlink" href="#7-second-pass-a-memory-coverhighvariable-layer-and-why-its-not-ready" title="Permanent link">&para;</a></h2>
+<p>With real <code>memory_values</code> data available (Section 5), the next step was
+building the Cover/HighVariable layer originally planned: does <code>self.locals</code>'
+flat, identity-blind offset keying conflate two logically different stack
+variables that happen to share one offset?</p>
+<p><strong>A same-size blind spot in the first diagnostic.</strong> <code>scan_stack_slot_size_ambiguities</code>
+(Section 4) only catches different sizes at the same offset. Tracing a real
+function (<code>util_app_gcc_O0.exe</code>'s largest function, <code>[STACK_DIST]</code> temporary
+instrumentation, removed after use) showed this misses the actually common
+case entirely: one stack offset commonly has 40+ separate <code>SsaMemoryValueId</code>s
+in a single <code>-O0</code> function, <em>all the same size</em> -- normal SSA versioning
+from one variable being written repeatedly (e.g. a loop-carried counter),
+not evidence of anything wrong. Telling "one variable, many writes" apart
+from "two variables, one disjoint-lifetime reuse" needs the Cover/interference
+data, not a size or raw-count heuristic.</p>
+<p><strong>New types</strong>: <code>SsaMemoryHighVariableId</code>/<code>SsaMemoryHighVariable</code> (<code>ssa.rs</code>,
+mirroring <code>SsaHighVariableId</code>/<code>SsaHighVariable</code> but for <code>SsaMemoryValueId</code>s)
+and <code>NirScalarSsa.memory_high_variables</code>/<code>value_memory_high_variables</code>.</p>
+<p><strong><code>build_memory_out_of_ssa_facts</code></strong> (<code>scalar_ssa.rs</code>), mirroring
+<code>build_out_of_ssa_facts</code>, but <em>forced-union only</em> -- there is no memory
+analog of a scalar <code>Copy</code>/<code>Cast</code> speculative merge, since a <code>Store</code> never
+reads a prior value at the address it writes (unlike a register <code>Copy</code>,
+which explicitly does). <code>memory_phis</code> (control-flow-join merges) is the only
+source of congruence between two <code>SsaMemoryValueId</code>s. <code>build_memory_value_cover</code>
+mirrors <code>build_value_cover</code> verbatim, adapted to <code>SsaMemoryValue</code>/
+<code>memory_operation_inputs</code>/<code>outputs</code>/<code>memory_phis</code>.</p>
+<p><strong><code>scan_stack_slot_cover_violations</code></strong> (<code>stack_slot_diagnostics.rs</code>): for
+each <code>self.locals</code> offset, flags pairs of distinct <code>SsaMemoryHighVariable</code>s
+with interfering covers -- the memory analog of <code>scan_cover_violations</code>.</p>
+<h3 id="real-corpus-measurement-found-a-real-signal-but-not-yet-trustworthy">Real-corpus measurement: found a real signal, but not yet trustworthy<a class="headerlink" href="#real-corpus-measurement-found-a-real-signal-but-not-yet-trustworthy" title="Permanent link">&para;</a></h3>
+<p>Corpus-wide (dev + realworld + holdout + adversarial, ~500+ functions):
+<strong>908 raw violation instances across 185 functions</strong>. Before treating this
+as a real bug count (the register-side work this session repeatedly showed
+the cost of <em>not</em> verifying a raw diagnostic count before acting on it),
+traced the smallest concrete case: <code>matrix_multiply</code> (<code>memory_layouts_clang_O0.exe</code>,
+one violation, <code>local_2c</code> / offset <code>-44</code>, the innermost loop's induction
+variable in a triple-nested matrix multiply).</p>
+<p>The rendered pseudocode for <code>local_2c</code> is <strong>completely correct and
+unambiguous</strong> (<code>for (local_2c = 0; local_2c &lt; local_1c; local_2c = uVar63) { ... }</code>,
+no visible naming conflict). The flagged pair (<code>SsaMemoryHighVariableId</code>
+2 and 18) is a <strong>false positive</strong>: <code>memory_high_variables[18]</code> is a single,
+short-lived memory value (cover <code>[block 7, 86..90)</code>) that was never
+transitively unioned into the loop variable's phi-chain group, even though
+tracing <code>ssa.memory_phis</code> directly shows the phi-chain <em>should</em> connect it
+(nested-loop phi outputs correctly chain as operands of outer-loop phis for
+this exact offset elsewhere in the same function). The exact reason this
+one value's forced-union edge is missing was not isolated in this session
+-- likely an incompleteness in how <code>build_memory_ssa</code>'s phi-operand list is
+populated for this specific CFG shape (deeply nested loops), not in the
+union-find/Cover logic itself (which is a direct, careful port of the
+already-correct scalar version).</p>
+<p><strong>Conclusion, stated plainly in the code</strong> (<code>scan_stack_slot_cover_violations</code>'s
+doc comment): this diagnostic's raw count is <strong>not currently trustworthy</strong>
+as a bug count, and must not be used to gate any real materialize decision
+until the phi-connectivity gap is found and fixed. It is real, tested,
+additive infrastructure (962/962 <code>fission-pcode</code> tests pass with it in
+place) and stays in the tree diagnostic-only, exactly as <code>scan_cover_violations</code>
+did before this session's own root-cause work made it trustworthy enough to
+act on.</p>
+<h3 id="honest-status-vs-the-original-plan">Honest status vs. the original plan<a class="headerlink" href="#honest-status-vs-the-original-plan" title="Permanent link">&para;</a></h3>
+<p>The original plan (Section 6) was "build the Cover layer, then wire it into
+<code>ensure_stack_slot_binding</code>." That wiring step was <strong>not</strong> done this round
+-- doing so on top of a diagnostic with a known, uninvestigated false-positive
+source would repeat exactly the mistake this session's earlier register-name
+work proved costly (a first "fix" that looked reasonable but was wrong,
+requiring a full revert once traced). The concrete next step is narrower
+and more tractable than "find real bugs": isolate why one specific memory
+value's phi-operand edge in <code>matrix_multiply</code> didn't get captured, fix that,
+then re-run this same corpus measurement to see how much of the 908 was
+that one systematic gap versus real slot-reuse cases.</p>
+<h2 id="8-third-pass-the-phi-connectivity-gap-was-write_effect-not-the-union-find">8. Third pass: the phi-connectivity gap was <code>write_effect</code>, not the union-find<a class="headerlink" href="#8-third-pass-the-phi-connectivity-gap-was-write_effect-not-the-union-find" title="Permanent link">&para;</a></h2>
+<p>Section 7 guessed the gap was in <code>build_memory_ssa</code>'s phi-operand
+population. Direct tracing (<code>FISSION_MEMHIGH_TRACE2</code>, printing every
+<code>memory_values</code> entry's storage/definition alongside its <code>dynamic_guards</code>
+entry when applicable, removed after use) proved that guess wrong and found
+the real mechanism.</p>
+<p><code>matrix_multiply</code>'s offset <code>-44</code> (<code>local_2c</code>) has 6 memory values: an
+<code>Input</code>, two <code>Phi</code>s (blocks 1 and 3, correctly forced-union-chained via
+<code>union_values</code> into one 5-member group -- the phi machinery was never
+broken), and three <code>Operation</code>-defined values. Two of those three
+(<code>SsaOpSite{block:2,op:2}</code> and <code>{block:7,op:59}</code>) have
+<code>guard=Some((Some(Stack), Exact, Store))</code> -- genuine, precisely-resolved
+stack writes, correctly included in the phi-chain group. The third,
+the one causing the false positive
+(<code>SsaOpSite{block:7,op:42}</code>), has <code>guard=Some((None, Unknown, Store))</code>.
+Cross-referencing the raw p-code: this op is <code>local_18[computed_index] =
+xmm0_da</code> -- a store through the function's <em>output array parameter</em>,
+nowhere near offset <code>-44</code>. Its pointer chain (rooted in a parameter
+register, not the stack pointer) correctly fails to resolve to any region
+at all in <code>resolve_pointer_value</code>.</p>
+<p><strong>Root cause</strong>: <code>MemoryLayout::write_effect</code> (scalar_ssa.rs), when a
+guard's <code>region</code> is <code>None</code>, conservatively assumed the write "might touch
+any storage sharing the same raw p-code space id" -- which, because
+<code>SsaMemoryStorageKey</code>'s <code>space_id</code> is just the p-code memory-space number
+(shared by <em>all</em> pointer-based accesses, stack or heap, in this SLEIGH
+model) and not itself region-discriminating, silently included every
+<em>Stack</em> partition too. Every write through a pointer that doesn't
+provably trace back to the stack pointer (the overwhelmingly common case:
+any store into a parameter/heap/array pointer) fabricated a phantom
+"definition" of <em>every</em> promoted stack slot in the function. Since a
+phantom value has no real value-flow relationship to anything, it never
+ends up as a phi operand, and sits alone in its own <code>SsaMemoryHighVariable</code>
+group with a narrow, spuriously-interfering cover.</p>
+<p><strong>Fix</strong>: narrowed the <code>None</code>-region branch to exclude <code>SsaMemoryRegion::Stack</code>
+partitions. Justification: given this session's earlier fix
+(Section 2-3) made <code>resolve_pointer_value</code> correctly resolve <em>every</em>
+stack-pointer-derived chain to <code>Some(Stack)</code>, a <code>None</code> result is now a
+<em>positive</em> proof the pointer's def-use chain does not trace back to the
+stack pointer -- and a non-escaping local (never had its address taken)
+cannot be written through an unrelated pointer under normal C/C++
+semantics. <code>read_effect</code> needed no change: it only ever expands through
+<code>exact_access</code>, which already requires <code>SsaGuardRangePrecision::Exact</code> and
+was never affected by this gap.</p>
+<h3 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 962 passed, 1 skipped.</li>
+<li>[x] <code>cargo nextest run --workspace</code> (excluding <code>selfjit_matches_cranelift</code>):
+      only the same pre-existing, unrelated <code>fission-emulator</code> baseline
+      failures.</li>
+<li>[x] Concrete repro (<code>matrix_multiply</code>, <code>memory_layouts_clang_O0.exe</code>):
+      the <code>stack_slot_cover_violation</code> for <code>local_2c</code> is gone.</li>
+<li>[x] Before/after decompile output on a real corpus binary: byte-identical
+      (this subsystem still has no production consumer).</li>
+</ul>
+<h3 id="real-corpus-re-measurement-dev-realworld-holdout-adversarial">Real-corpus re-measurement (dev + realworld + holdout + adversarial)<a class="headerlink" href="#real-corpus-re-measurement-dev-realworld-holdout-adversarial" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">Before this fix</th>
+<th style="text-align: right;">After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stack_slot_cover_violation</code> instances</td>
+<td style="text-align: right;">908</td>
+<td style="text-align: right;"><strong>225</strong></td>
+</tr>
+<tr>
+<td>Distinct functions with &gt;=1 violation</td>
+<td style="text-align: right;">185</td>
+<td style="text-align: right;"><strong>113</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="whats-left-a-second-separate-larger-gap">What's left: a second, separate, larger gap<a class="headerlink" href="#whats-left-a-second-separate-larger-gap" title="Permanent link">&para;</a></h3>
+<p>Tracing the smallest remaining case (<code>___w64_mingwthr_add_key_dtor</code>'s
+<code>home_0</code>, a register spill slot never address-taken) found a <em>different</em>
+mechanism responsible for most of what's left: <code>write_effect</code>'s <code>Call</code>
+case unconditionally treats every function call as writing to every
+promoted stack slot (<code>guard.kind == SsaDynamicGuardKind::Call =&gt;
+self.storages().collect()</code>). This is a deliberate, generally-<em>correct</em>
+conservative assumption -- a callee genuinely can write to a caller's
+stack slot if its address escaped into an argument -- but is imprecise for
+the common case of a non-escaping local sitting near an unrelated call
+(<code>calloc</code>/<code>EnterCriticalSection</code>/<code>LeaveCriticalSection</code> in the traced
+case, none of which receive <code>home_0</code>'s address). Closing this gap properly
+needs real escape analysis (does any instruction take a given slot's
+address and pass it to a call) that does not exist anywhere in this
+memory-promotion-SSA subsystem yet -- a distinctly larger piece of work
+than the two fixes landed this session, called out explicitly rather than
+attempted in the same pass. <code>scan_stack_slot_cover_violations</code>'s doc
+comment documents this precisely so a future session doesn't have to
+re-derive it.</p>
+<h2 id="9-fourth-pass-real-escape-analysis-closing-the-call-gap">9. Fourth pass: real escape analysis, closing the <code>Call</code> gap<a class="headerlink" href="#9-fourth-pass-real-escape-analysis-closing-the-call-gap" title="Permanent link">&para;</a></h2>
+<p>User explicitly chose to build the escape analysis rather than stop at
+Section 8's guard-narrowing pattern, accepting the larger scope.</p>
+<p><strong>Design.</strong> A <code>Call</code>/<code>CallInd</code> p-code op carries exactly one input (the
+target) in this codebase's lifted p-code -- confirmed by inspecting real
+corpus raw p-code, not assumed -- so arguments are never data-flow-connected
+to the call op itself; they're register- or stack-resident by calling-
+convention position. This rules out "does this call's own inputs include a
+stack address" as a viable check and requires two separate mechanisms:</p>
+<ul>
+<li><strong>Register-ABI conventions</strong> (x64, AArch64, etc.): a stack address is
+  "taken" if it is ever assigned into one of <code>RegisterNamer::int_param_offsets</code>
+  (already-existing per-calling-convention ABI knowledge, reused rather than
+  duplicated) -- deliberately whole-function-wide rather than per-call-site
+  (if a slot's address is ever placed in an argument register anywhere,
+  every call in the function conservatively might receive it; this trades
+  precision for not needing per-call-site reaching-value analysis).</li>
+<li><strong>Stack-ABI conventions</strong> (x86-32 cdecl/stdcall): arguments are pushed via
+  ordinary <code>Store</code> ops before the call, with no argument-register
+  involvement at all. Handled by the same general mechanism: an address is
+  "taken" if it is ever used as a <code>Store</code>'s <em>value</em> operand (spilled/staged
+  anywhere, not just at a call -- also covers <code>&amp;local</code> written into a
+  global or struct) or a <code>Return</code>'s operand.</li>
+</ul>
+<p>Implemented as <code>compute_escaping_stack_storages</code> (scalar_ssa.rs), run once
+per function inside <code>MemoryLayout::build</code> (now takes <code>pcode</code>/<code>ssa</code>/<code>options</code>
+in addition to <code>guards</code>) and stored on a new <code>MemoryLayout.escaping</code> field.
+<code>write_effect</code>'s <code>Call</code> case now returns <code>self.escaping</code> instead of
+<code>self.storages()</code>.</p>
+<p><strong>A real bug found via the test suite, not corpus tracing this time</strong>:
+<code>validate_scalar_ssa_with_context</code>'s cross-check re-derives <code>memory_values</code>
+via a <em>second</em> <code>build_memory_ssa</code> call against a deliberately sparse
+<code>expected_memory: NirScalarSsa</code> that historically only needed
+<code>dynamic_guards</code> populated (memory-SSA construction never touched scalar
+<code>values</code>/<code>operation_inputs</code>/<code>phis</code> before this session). <code>compute_escaping_stack_storages</code>
+breaks that assumption -- it resolves pointer chains through exactly those
+fields. Running against the sparse re-derivation, escape resolution
+silently found nothing (empty <code>values</code> means every <code>resolve_pointer_value</code>
+call fails immediately), diverging from the real build and failing
+<code>StoragePartitionsMismatch</code> on a legitimate escaping-local test case. Fixed
+by also cloning <code>values</code>/<code>operation_inputs</code>/<code>operation_outputs</code>/<code>phis</code> into
+<code>expected_memory</code>.</p>
+<p><strong>Test coverage</strong>: the existing
+<code>signed_stack_location_is_promoted_and_unknown_call_kills_it</code> test asserted
+the <em>old</em> behavior (an unrelated unknown call always kills a stack write) as
+a hard invariant -- exactly the imprecision this pass fixes. Split into two:
+<code>..._does_not_kill_non_escaping_local</code> (address only ever dereferenced
+directly -- must survive the call unchanged) and <code>..._kills_escaping_local</code>
+(address also stored to an unrelated location before the call -- must still
+be killed). Both pass, and between them pin down the exact boundary this
+analysis draws.</p>
+<h3 id="validation_1">Validation<a class="headerlink" href="#validation_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 963 passed (962 prior + replaced
+      test), 1 skipped.</li>
+<li>[x] <code>cargo nextest run --workspace</code>: only the same pre-existing,
+      unrelated <code>fission-emulator</code> baseline failures.</li>
+<li>[x] Concrete repros: both <code>matrix_multiply</code>'s <code>local_2c</code> (Section 8) and
+      <code>___w64_mingwthr_add_key_dtor</code>'s <code>home_0</code> (this section) no longer
+      appear in <code>scan_stack_slot_cover_violations</code>'s output.</li>
+<li>[x] Before/after decompile output on a real corpus binary: byte-identical
+      (still diagnostic-only, wired into no production decision).</li>
+</ul>
+<h3 id="real-corpus-re-measurement-dev-realworld-holdout-adversarial_1">Real-corpus re-measurement (dev + realworld + holdout + adversarial)<a class="headerlink" href="#real-corpus-re-measurement-dev-realworld-holdout-adversarial_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">After Section 8</th>
+<th style="text-align: right;">After this pass</th>
+<th style="text-align: right;">Total change from Section 7 baseline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stack_slot_cover_violation</code> instances</td>
+<td style="text-align: right;">225</td>
+<td style="text-align: right;"><strong>12</strong></td>
+<td style="text-align: right;">908 -&gt; 12 (<strong>98.7%</strong> reduction)</td>
+</tr>
+<tr>
+<td>Distinct functions with &gt;=1 violation</td>
+<td style="text-align: right;">113</td>
+<td style="text-align: right;"><strong>7</strong></td>
+<td style="text-align: right;">185 -&gt; 7</td>
+</tr>
+</tbody>
+</table>
+<h3 id="whats-left-a-precision-limit-not-a-bug">What's left: a precision limit, not a bug<a class="headerlink" href="#whats-left-a-precision-limit-not-a-bug" title="Permanent link">&para;</a></h3>
+<p>Traced the smallest remaining case (<code>_power</code>, <code>math_gcc-m32_O2.exe</code>, 1
+violation). Every contributing memory value has a clean, genuine
+<code>(Some(Stack), Exact, Store)</code> guard -- no phantom write-effect source this
+time. The forced-union phi chain is also complete and correct (verified by
+hand-tracing all <code>memory_phis</code> operand/output pairs for the offset into one
+5-member union-find group). The false positive instead comes from
+<code>SsaMemoryHighVariable</code>'s cover being a single <em>merged, per-block</em> range: a
+5-member loop-carried phi-chain group's members individually touch
+different, non-overlapping sub-ranges of a block, but their <em>merged</em> cover
+spans the block almost entirely (<code>0..131</code>), which then numerically
+"interferes" with a third, genuinely disjoint value's narrow real range
+(<code>88..100</code>) even though no actual member was live during that window.</p>
+<p>This is the same class of approximation Ghidra's own block-granular
+<code>Cover</code>/<code>Merge</code> machinery has -- not specific to this implementation.
+Resolving it precisely would need per-value point-in-time liveness instead
+of per-block ranges, a materially larger redesign of the Cover
+representation itself (affecting the scalar side too, not just memory).
+Left as documented, accepted residual imprecision rather than pursued
+further this session -- diminishing returns at 98.7% already reached, and
+the remaining mechanism is understood well enough that a future session
+doesn't have to re-discover it via tracing.</p>
+<h2 id="10-fifth-pass-wiring-into-selflocals-the-original-goal-finally-live">10. Fifth pass: wiring into <code>self.locals</code> -- the original goal, finally live<a class="headerlink" href="#10-fifth-pass-wiring-into-selflocals-the-original-goal-finally-live" title="Permanent link">&para;</a></h2>
+<p>User asked explicitly to wire the (now precise) memory Cover data into a
+real production decision, closing the loop back to this whole
+investigation's original trigger: <code>stack_slots.rs</code>'s <code>ensure_stack_slot_binding</code>
+keys <code>self.locals</code> purely by <code>i64</code> offset, with no identity discriminant
+at all.</p>
+<p><strong>Precision requirement, learned the hard way in Section 8/9</strong>: a live
+guard built on <code>SsaMemoryHighVariable</code>'s <em>merged</em> per-block cover would
+reproduce the exact <code>_power</code> false positive that section fixed by <em>not</em>
+wiring anything in yet. So this pass first adds
+<code>NirScalarSsa.memory_value_covers: Vec&lt;Vec&lt;SsaCoverBlock&gt;&gt;</code> -- the
+per-value (pre-merge) cover <code>build_memory_out_of_ssa_facts</code> already computed
+internally as a local variable, now also persisted -- so a live check can
+compare one specific value's own range against another specific value's own
+range, never a whole group's artificially-broadened merged range.</p>
+<p><strong>Design</strong> (<code>stack_slot_diagnostics.rs</code>):
+- <code>resolve_current_stack_memory_value(offset)</code>: resolves the <code>SsaMemoryValueId</code>
+  the <em>current</em> op (<code>self.current_lowering_site</code>, already threaded through
+  every lowering call site in this builder) reads/writes at <code>offset</code>, via
+  <code>memory_operation_inputs</code>/<code>memory_operation_outputs</code> -- the same
+  <code>SsaOpSite</code>-keyed correlation <code>cover_diagnostics.rs</code> already established
+  for the register case. The access's size comes from the op itself, not a
+  caller-supplied value, so it can never disagree with what the SSA side
+  modeled.
+- <code>cover_proves_stack_slot_reuse_unsafe(offset)</code>: <code>true</code> only when the
+  current access's <code>SsaMemoryHighVariable</code> group differs from <em>every</em> group
+  already recorded as owning this offset's name (<code>stack_slot_memory_owners</code>,
+  a new <code>PreviewBuilder</code> field, <code>BTreeMap&lt;i64, Vec&lt;SsaMemoryHighVariableId&gt;&gt;</code>)
+  <em>and</em> its own per-value cover interferes with at least one owning group
+  member's own per-value cover.
+- <code>record_stack_slot_memory_owner(offset)</code>: called after a safe bind, adds
+  the current access's group to the offset's owner set (multiple
+  non-interfering groups can share one offset's name, mirroring the
+  scalar-side speculative-merge spirit -- Ghidra's own Cover/Merge allows
+  this too).</p>
+<p><strong>Wiring</strong> (<code>ensure_stack_slot_binding</code>): before reusing an existing
+<code>self.locals[offset]</code> entry, call <code>cover_proves_stack_slot_reuse_unsafe</code>.
+If it fires, skip <code>self.locals</code> entirely and hand back a one-off fresh temp
+name (<code>next_unused_temp_binding_name</code>) -- deliberately <em>not</em> cached into
+<code>self.locals</code> or <code>stack_slot_memory_owners</code> as a persistent "alternate"
+slot. Real-corpus testing found zero occurrences of this path actually
+firing (see below), so a fresh name per occurrence keeps this a minimal,
+provably-safe guard rather than a speculative redesign of <code>self.locals</code>'
+one-name-per-offset shape for a case that's never been observed. A future
+session that <em>does</em> find a real trigger has a documented, easy next step
+(track a stable alternate name per owning group instead of a fresh one
+each time) rather than starting from zero.</p>
+<h3 id="test-coverage-since-the-real-corpus-has-zero-true-positives-to-test-against">Test coverage (since the real corpus has zero true positives to test against)<a class="headerlink" href="#test-coverage-since-the-real-corpus-has-zero-true-positives-to-test-against" title="Permanent link">&para;</a></h3>
+<p>Five new unit tests in <code>stack_slot_diagnostics.rs</code>, directly constructing a
+<code>PreviewBuilder</code> with hand-crafted <code>memory_values</code>/<code>memory_high_variables</code>/
+<code>memory_value_covers</code>/<code>current_lowering_site</code> (mirroring <code>cover_diagnostics.rs</code>'s
+synthetic-<code>NirScalarSsa</code> test style) rather than reverse-engineering exact
+SLEIGH p-code byte positions to reproduce a real conflict: two groups with
+genuinely overlapping individual covers are correctly flagged unsafe; the
+same group already owning the name is safe; no recorded owner yet is safe;
+two groups with <em>non</em>-overlapping covers (the <code>_power</code> shape) are correctly
+<em>not</em> flagged; and a successful bind correctly records the new owner.</p>
+<h3 id="validation_2">Validation<a class="headerlink" href="#validation_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>cargo nextest run -p fission-pcode</code>: 968 passed (963 prior + 5 new),
+      1 skipped.</li>
+<li>[x] <code>cargo nextest run --workspace</code>: only the same pre-existing,
+      unrelated <code>fission-emulator</code> baseline failures.</li>
+<li>[x] Real-corpus <code>scan_stack_slot_cover_violations</code> count: unchanged at 12
+      (the live gate and the diagnostic scan are independent computations
+      over the same data; the live gate never fires, so it cannot affect
+      what <code>self.locals</code> ends up containing for the diagnostic to later
+      re-scan).</li>
+<li>[x] Before/after decompile output, git-stash A/B, on four real corpus
+      binaries spanning the traced false-positive cases
+      (<code>control_flow_gcc-m32_O0.exe</code>, <code>memory_layouts_clang_O0.exe</code>
+      [<code>matrix_multiply</code>], <code>advanced_patterns_gcc_O2.exe</code>
+      [<code>___w64_mingwthr_add_key_dtor</code>], <code>math_gcc-m32_O2.exe</code> [<code>_power</code>]):
+      <strong>byte-identical</strong> in all four.</li>
+</ul>
+<h3 id="honest-bottom-line">Honest bottom line<a class="headerlink" href="#honest-bottom-line" title="Permanent link">&para;</a></h3>
+<p>As of this session, wiring this in has <strong>zero observed effect on real
+decompiler output</strong> -- not because the wiring is inert, but because no
+genuine stack-slot-reuse-for-a-different-variable case has been found
+anywhere in the corpus tested (dev + realworld + holdout + adversarial).
+The mechanism is real, tested against both directions (fires on a
+constructed true positive, stays silent on all four traced historical false
+positives), and now sits ready in the exact place this whole session's
+investigation was aimed at from the start -- but its practical value is
+currently unproven against real code, unlike the register-name fix (which
+had a measured, real corpus impact from the same session). Reported
+plainly rather than overstated.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

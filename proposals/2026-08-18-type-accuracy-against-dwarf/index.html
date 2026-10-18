@@ -1,0 +1,1683 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A cross-platform, Rust-powered reverse engineering and decompilation framework.">
+      
+      
+      
+        <link rel="canonical" href="https://sjkim1127.github.io/Fission/proposals/2026-08-18-type-accuracy-against-dwarf/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Type accuracy against DWARF - Fission</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#type-accuracy-against-dwarf" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fission" class="md-header__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fission
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Type accuracy against DWARF
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../PROJECT_MAP/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Project Map
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CLI/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../QUALITY_METRICS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quality Metrics
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../EVALUATION/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../MALWARE_SAMPLE_POLICY/" class="md-tabs__link">
+          
+  
+  
+  Developer Policies
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../changelog/v0.2.3/" class="md-tabs__link">
+          
+  
+  
+  Release Notes
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fission" class="md-nav__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fission
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PROJECT_MAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CLI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY_METRICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EVALUATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Policies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Policies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MALWARE_SAMPLE_POLICY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Malware Sample Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VERSIONING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-scorer-bugs-came-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two scorer bugs came first
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-remaining-loss-actually-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the remaining loss actually is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-was-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was fixed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-was-measured-and-abandoned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was measured and abandoned
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-library-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The library corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-extractor-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The extractor itself
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The extractor itself">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-things-this-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two things this does not cover
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#win32-constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Win32 constants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-is-not-deterministic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output is not deterministic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-winnable-on-this-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not winnable on this corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="type-accuracy-against-dwarf">Type accuracy against DWARF<a class="headerlink" href="#type-accuracy-against-dwarf" title="Permanent link">&para;</a></h1>
+<p>Measuring DecBench's second metric locally, and what it says to work on.</p>
+<p>fission-benchmark ships the original C source and builds with <code>-g</code>, so unlike
+the DecBench submission corpus its type ground truth is computable here.
+<code>runner/type_match.py</code> is a port of DecBench's own scorer: arguments match by
+ABI position, stack locals by calibrated frame offset, everything else by exact
+name.</p>
+<p>Every figure below excludes rows that decompile a different function than the
+manifest names -- see <code>2026-08-17-undefined-name-in-output.md</code> section 9.</p>
+<h2 id="two-scorer-bugs-came-first">Two scorer bugs came first<a class="headerlink" href="#two-scorer-bugs-came-first" title="Permanent link">&para;</a></h2>
+<p>The port under-reported Fission by 18 points before any of it measured
+decompiler behaviour.</p>
+<p><strong>Pointer spellings never reached <code>TYPE_MAP</code>.</strong> The port carried the table but
+not upstream's <code>_map_pointee</code>, so the table only fired on a whole-string match.
+<code>longlong</code> normalized and <code>uchar *</code> did not, and <code>uchar *</code> cannot intersect
+DWARF's <code>char*</code>. The single largest bucket was 83 arguments where ground truth
+accepted both <code>char*</code> and <code>unsigned char*</code> and Fission wrote <code>uchar *</code>. angr
+does not move when this is fixed -- it already prints <code>char*</code>. Ghidra-style
+spellings absorbed the whole penalty.</p>
+<p><strong>32-bit PE decoration defeated the definition parser.</strong> <code>_find_definition_params</code>
+anchored the function name with <code>\b</code>, which cannot straddle the leading
+underscore of <code>_list_sum</code>, so every gcc-m32 row parsed zero arguments while
+ground truth had one to four. Read as decompiler behaviour it looked like
+wholesale argument loss.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>perfect</th>
+<th>mean accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>as ported</td>
+<td>19.7%</td>
+<td>44.0%</td>
+</tr>
+<tr>
+<td>+ pointer spellings</td>
+<td>21.0%</td>
+<td>50.2%</td>
+</tr>
+<tr>
+<td>+ underscore decoration</td>
+<td>29.5%</td>
+<td>62.8%</td>
+</tr>
+<tr>
+<td>angr, same fixes</td>
+<td>22.7%</td>
+<td>54.9%</td>
+</tr>
+</tbody>
+</table>
+<p>Recovered arity agrees with DWARF on 97.0% of rows.</p>
+<h2 id="where-the-remaining-loss-actually-is">Where the remaining loss actually is<a class="headerlink" href="#where-the-remaining-loss-actually-is" title="Permanent link">&para;</a></h2>
+<p>Splitting the score by variable kind moved the target completely:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>tp</th>
+<th>fp</th>
+<th>fn</th>
+<th>accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>arguments</td>
+<td>628</td>
+<td>137</td>
+<td>2</td>
+<td><strong>81.9%</strong></td>
+</tr>
+<tr>
+<td>stack locals</td>
+<td>153</td>
+<td>65</td>
+<td>397</td>
+<td><strong>24.9%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The 397 is not a recovery gap. 398 ground-truth locals carry no frame offset --
+they live in registers, all of them at <code>-O1</code> and above -- and the scorer can
+only match those by exact source name. No decompiler recovers <code>sum</code> or <code>i</code>. On
+the 217 locals that do carry an offset, Fission scores 56.2% against angr's
+29.0%.</p>
+<h2 id="what-was-fixed">What was fixed<a class="headerlink" href="#what-was-fixed" title="Permanent link">&para;</a></h2>
+<p><strong>Parameters read only through a truncating return.</strong> <code>int add_ints(int, int)</code>
+at <code>-O1</code> came back as <code>add_ints(longlong, longlong)</code>.
+<code>narrow_integer_params_from_wrapping_return_uses</code> exists for exactly this and
+walked only the return expression, but the body reaching it is
+<code>rax = (int)(param_1 + param_2); return rax;</code> -- one intervening assignment hid
+both parameters. Following a returned name into its definition, when the body
+assigns it once and uses it once, fixed 6 rows and regressed none. Type accuracy
+61.46% -&gt; 63.15%; gotos, line count and bare-compile all unchanged.</p>
+<h2 id="what-was-measured-and-abandoned">What was measured and abandoned<a class="headerlink" href="#what-was-measured-and-abandoned" title="Permanent link">&para;</a></h2>
+<p><strong>Stack locals declared wider than the slot.</strong> 19 of the 43 stack-local
+mismatches are a 4-byte slot declared <code>ulonglong</code> or <code>longlong</code> -- <code>unsigned sum</code>
+accumulating in <code>[rbp-4]</code>, returned through RAX, so the return-type constraint
+pinned it 64-bit.</p>
+<p>A pass narrowing such a local to the width actually stored into it passes
+unit tests in both directions and never fires on a real binary. Instrumenting it
+shows why: at every one of the seven points the type fixed-point runs, the body
+contains no <code>Assign { lhs: Var("local_4") }</code> at all. Stack slots are still
+written through memory at that stage; the <code>local_4 = uVar18</code> form the renderer
+shows appears only after normalize. The evidence a width decision needs -- the
+store width -- is in the memory representation, not in statement-level
+assignments, and reaching it is a different analysis than the one attempted.</p>
+<p>The pass was removed rather than left inert.</p>
+<h2 id="the-library-corpus">The library corpus<a class="headerlink" href="#the-library-corpus" title="Permanent link">&para;</a></h2>
+<p>Every other C source in the corpus declares each struct it names in the same
+translation unit, so a type library has nothing to recognize: of 380 decompiled
+functions, not one declares a type the library could have supplied. That makes
+library-driven recovery unmeasurable rather than weak.</p>
+<p><code>corpus/dev/source/c/libc_types.c</code> (10 functions x 7 gcc variants) takes or
+builds types the library does know -- <code>FILE</code> through a parameter and a return,
+<code>struct tm</code> through a pointer, <code>div_t</code> by value, <code>time_t</code>, <code>size_t</code>, <code>char **</code>
+from <code>strtol</code>. DWARF records them under those names, so recovery can be scored.
+Fission's baseline there is 23.7% against 63.1% on the self-contained corpus.</p>
+<p>Two defects surfaced immediately and are fixed:</p>
+<p><strong>A COFF section symbol shadowed the function at its address.</strong> Calls into the
+static C library rendered <code>.text(param_1, ...)</code>. A <code>-g</code> build keeps the COFF
+symbol table, every linked object contributes a <code>C_STAT</code> symbol carrying its own
+section's name, and after linking that symbol sits on the object's first byte of
+the merged section -- the first byte of a real function. <code>.text</code> became a name
+fact, and facts outrank direct symbols, so <code>fopen</code> lost 0x140002c00.</p>
+<p><strong>A signature type of <code>int</code> was treated as evidence.</strong> The GDT extractor
+recovers parameter names reliably but resolves a type ID only when it lands in
+the built-in table; typedefs, composites and pointers fall through to <code>int</code>.
+30,722 of 31,410 C-library entries and 96,081 of 115,900 Win32 entries are
+stored that way, <code>fopen|int|__filename:int,__modes:int</code> among them. Applying
+that overwrites inference with a placeholder. The test has to be per type
+string: judging <code>difftime|double|_Time1:int,_Time2:int</code> as a whole keeps the
+<code>double</code> and takes both placeholders with it.</p>
+<h2 id="the-extractor-itself">The extractor itself<a class="headerlink" href="#the-extractor-itself" title="Permanent link">&para;</a></h2>
+<p>Two defects, one behind the other.</p>
+<p><strong><code>resolve_type</code> never decoded the kind byte.</strong> It looked up a Data Type ID in a
+map keyed by the raw table key, but the ID carries its kind in the top byte, so
+only built-ins (kind 0) ever matched and every typedef, composite and pointer
+fell through to <code>int</code>. That is why both signature files were typeless.</p>
+<p><strong><code>parse_pointer_table</code> read the wrong buffers.</strong> It walked every
+<code>LONGKEY_FIXED_REC</code> buffer and read each as an array of 17-byte pointer records.
+<code>FixedRecNode</code> is the leaf type for EVERY table with fixed-length records, and
+its record length comes from the table's schema rather than from the node, so a
+node's own bytes cannot say whether it holds pointer records. In
+<code>generic_clib_64.gdt</code> that produced 16,199 "pointers" of which 1,404 are real,
+and the decoded pointee IDs carried 250-odd distinct kind bytes where only 0-8
+exist. Fixing only <code>resolve_type</code> therefore made things worse, not better:
+<code>FILE *fopen(const char *, const char *)</code> resolved to <code>int*</code>, which looks like a
+recovered type in a way <code>int</code> does not.</p>
+<p>Three properties identify a genuine pointer leaf, and together they select
+exactly the three real ones out of 32 candidates: the key/record array fits the
+buffer at a 25-byte stride, leaf keys are strictly ascending, and every key is a
+Data Type ID of kind POINTER -- this table's keys are its own IDs, so one
+foreign key means a foreign table. Verified against Ghidra 11.4.2's
+<code>FixedRecNode</code> and <code>PointerDBAdapterV2</code>.</p>
+<p>With both fixed, the C-library prototypes resolve exactly:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>fopen|FILE*|__filename:char*,__modes:char*
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>fgets|char*|__s:char*,__n:int,__stream:FILE*
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>strlen|size_t|__s:char*
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>strtol|long|__nptr:char*,__endptr:char**,__base:int
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>localtime|tm*|__timer:time_t*
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>difftime|double|__time1:time_t,__time0:time_t
+</span></code></pre></div>
+<p>Typeless C-library entries fall from 97.8% to 79.6%. Struct extraction improves
+with the same table: 510 structs in that archive get corrected field types
+(<code>int*</code> -&gt; <code>X509_ALGOR*</code>, <code>int*</code> -&gt; <code>char*</code>) and 63 more are recovered.</p>
+<p>Measured end to end, regenerating only the two <code>generic_clib</code> signature files:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>before</th>
+<th>after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>libc slice type accuracy</td>
+<td>19.14%</td>
+<td><strong>24.86%</strong></td>
+</tr>
+<tr>
+<td>self-contained corpus</td>
+<td>63.26%</td>
+<td>63.26%</td>
+</tr>
+<tr>
+<td>improved / regressed</td>
+<td></td>
+<td>8 / <strong>0</strong></td>
+</tr>
+<tr>
+<td>gotos, bare-compile</td>
+<td>36, 308/428</td>
+<td>36, 308/428</td>
+</tr>
+</tbody>
+</table>
+<p>Decompiled output now declares <code>FILE* __stream;</code> and <code>char* __filename;</code> where
+it declared <code>ulonglong</code>.</p>
+<h3 id="two-things-this-does-not-cover">Two things this does not cover<a class="headerlink" href="#two-things-this-does-not-cover" title="Permanent link">&para;</a></h3>
+<p>Regenerating <code>mac_osx</code> and <code>windows_vs12_{32,64}</code> was reverted. Those files went
+3,801 -&gt; 46,781 and 8,119 -&gt; 100,983 lines, and since this change cannot affect
+how many function definitions are found, the shipped files were not produced by
+this version of the script. Replacing them would mix an unrelated content change
+into a type fix. Only <code>generic_clib</code> and <code>generic_clib_64</code> were regenerated,
+where the function-name set is identical to what shipped.</p>
+<p><code>win_api_signatures.txt</code> is 82.9% typeless too but carries a header comment and
+hand-curated entries (<code>CreateFileA|HANDLE|lpFileName:PSTR,...</code>), so it is not a
+plain GDT extraction and regenerating it would discard that.</p>
+<p>The function's own parameters are still untyped -- <code>open_reader(ulonglong)</code>
+where the local holding <code>fopen</code>'s result is now correctly <code>FILE*</code>. Propagating a
+typed local back to the parameter it was copied from is the next step, and it is
+ordinary type flow rather than library work.</p>
+<h2 id="win32-constants">Win32 constants<a class="headerlink" href="#win32-constants" title="Permanent link">&para;</a></h2>
+<p><code>utils/</code> held three constant sources and none of them could name a literal.
+<code>win_api_constants.json</code> is a flat error-code table with no grouping and no
+<code>PAGE_*</code>, <code>WAIT_*</code> or even <code>ERROR_SUCCESS</code>. The enum list in
+<code>windows_vs12_*.gdt.types.json</code> has the names but wrong values -- <code>WAIT_OBJECT_0</code>
+2048 where it is 0, and <code>PAGE_NOACCESS</code> and <code>FILE_SHARE_READ</code> both 264 where
+both are 1, two distinct constants at one value being what shows the wrong field
+was read. <code>WinConstantsDb</code> had sixteen correct hand-written groups whose names
+do not match the ones <code>win_api_signatures.txt</code> uses.</p>
+<p>Joining group name to constants by prefix was measured and rejected.
+<code>PAGE_PROTECTION_FLAGS</code> -&gt; <code>PAGE_*</code> works, and the same rule turns
+<code>PRINTER_HANDLE</code>, <code>SC_HANDLE</code> and <code>LSA_HANDLE</code> -- handle types, not enums --
+into groups of 137, 38 and 12 constants. 534 of 1,198 signature type names
+"resolve" that way.</p>
+<p>Three pieces closed it:</p>
+<p><code>gdt_extract_enums.py</code> reads the enum tables Ghidra actually writes
+(<code>EnumDBAdapterV1</code> / <code>EnumValueDBAdapterV1</code>, schema order, no record header) and
+recovers 39,382 constants that agree with the MinGW headers on 99.75% of names,
+against <code>win_api_constants.json</code>'s 94.03%.</p>
+<p><code>win32_enum_groups.py</code> takes group membership from <code>vendor/win32metadata</code>,
+already vendored and MIT licensed, which is where those group names came from.
+It is definitive in both directions: it gives <code>PAGE_PROTECTION_FLAGS</code> its
+members and says nothing about <code>PRINTER_HANDLE</code>. 745 groups list members
+outright, 309 declare a header prefix filter and are filled from the constant
+table. Result: 548 groups, 9,076 members, 726 methods with parameter mappings,
+including <code>{"method": "WaitForSingleObject", "parameter": "return"}</code>.</p>
+<p>The renderer names a literal call argument when metadata records a group for
+that parameter, and a compared literal when the variable holds a known API's
+return. The return reaches its comparison through a copy, so copies are followed
+to a fixed point. Only variables assigned once are tracked, only <code>==</code> and <code>!=</code>
+are annotated, and only flag sets decompose.</p>
+<p>The name goes in a comment, and that was measured:
+<code>return PAGE_EXECUTE_READWRITE;</code> fails to build in the recompilation harness
+where <code>return 0x40 /* PAGE_EXECUTE_READWRITE */;</code> succeeds.</p>
+<div class="language-text highlight"><pre><span></span><code>VirtualAlloc(0, n, 12288 /* MEM_RESERVE | MEM_COMMIT */,
+                   64 /* PAGE_EXECUTE_READWRITE */)
+if (local_4 == 258 /* WAIT_TIMEOUT */)
+</code></pre></div>
+<p><code>corpus/dev/source/c/win32_status.c</code> exists to score this: the rest of the
+corpus contains no Win32 use, and scanning 447 decompiled functions for the
+3,155 distinctive values in the constant table finds zero. It also showed why a
+magnitude gate would not work -- the real targets are 5, 8, 32, 128 and 258.</p>
+<h2 id="output-is-not-deterministic">Output is not deterministic<a class="headerlink" href="#output-is-not-deterministic" title="Permanent link">&para;</a></h2>
+<p>Comparing two corpus runs for regressions turned up 30 rows that changed on
+binaries with no Win32 content at all. They are not regressions and not caused by
+this work: the same function decompiled three times at <code>a0163d42f</code>, with every
+uncommitted change stashed, produces three different outputs at both the NIR and
+HIR layers.</p>
+<p>The symptom is variable naming. <code>p</code>, <code>ptr</code> and <code>addr</code> are all present in both
+outputs and attached to different variables, which is what an iteration over a
+<code>HashMap</code> of rename candidates looks like when the hasher is seeded per process.</p>
+<p>Type accuracy, goto count, line count and bare-compile are unaffected, because
+none of them matches on those names -- the type metric aligns by ABI position
+and frame offset. But "rows whose text changed" has been used as a regression
+signal throughout this work and it is not one. Golden-output comparison in CI,
+result caching, and reviewing a change by diffing two runs are all impossible
+until this is fixed.</p>
+<h2 id="not-winnable-on-this-corpus">Not winnable on this corpus<a class="headerlink" href="#not-winnable-on-this-corpus" title="Permanent link">&para;</a></h2>
+<p>Around 40 argument mismatches are named source structs -- <code>Pair*</code>, <code>Kv*</code>,
+<code>Node*</code>, <code>ConfigNode*</code> -- recovered as <code>uint *</code> or <code>int *</code>. Those names exist
+only in the benchmark's own sources, in no library, and angr scores zero on them
+too. They are not a type-library gap; they are outside what the metric can
+credit any decompiler for.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

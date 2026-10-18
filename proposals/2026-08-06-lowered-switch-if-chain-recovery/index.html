@@ -1,0 +1,1716 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A cross-platform, Rust-powered reverse engineering and decompilation framework.">
+      
+      
+      
+        <link rel="canonical" href="https://sjkim1127.github.io/Fission/proposals/2026-08-06-lowered-switch-if-chain-recovery/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Decompiler Change Proposal: Recover switch from a Lowered If-Chain - Fission</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#decompiler-change-proposal-recover-switch-from-a-lowered-if-chain" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fission" class="md-header__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fission
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Decompiler Change Proposal: Recover switch from a Lowered If-Chain
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../PROJECT_MAP/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Project Map
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CLI/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../QUALITY_METRICS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quality Metrics
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../EVALUATION/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Evaluation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../MALWARE_SAMPLE_POLICY/" class="md-tabs__link">
+          
+  
+  
+  Developer Policies
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../changelog/v0.2.3/" class="md-tabs__link">
+          
+  
+  
+  Release Notes
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fission" class="md-nav__button md-logo" aria-label="Fission" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fission
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fission-systems/Fission" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sjkim1127/Fission
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PROJECT_MAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CLI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY_METRICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EVALUATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Policies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Policies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MALWARE_SAMPLE_POLICY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Malware Sample Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VERSIONING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release Notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.8/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.8
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.7
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/v0.1.2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fission 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The fix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-follow-up-round-binary-search-decision-trees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Follow-up round: binary-search decision trees
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-third-round-the-biased-subtraction-range-check-resolved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Third round: the biased-subtraction range check, resolved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-remaining-known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Remaining known limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-fourth-round-normalize-level-flag-value-simplification-partial-progress-on-gap-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Fourth round: normalize-level flag-value simplification (partial progress on gap 1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-fifth-round-closing-the-not-yet-a-switch-gap-from-round-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Fifth round: closing the "not yet a switch" gap from round 4
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="decompiler-change-proposal-recover-switch-from-a-lowered-if-chain">Decompiler Change Proposal: Recover <code>switch</code> from a Lowered If-Chain<a class="headerlink" href="#decompiler-change-proposal-recover-switch-from-a-lowered-if-chain" title="Permanent link">&para;</a></h1>
+<p>Date: 2026-08-06</p>
+<h2 id="1-context">1. Context<a class="headerlink" href="#1-context" title="Permanent link">&para;</a></h2>
+<p>Fourth idea ported from angr's decompiler this session, from the switch-
+recovery survey: angr's <code>LoweredSwitchSimplifier</code> (documented in the SAILR
+paper, USENIX 2024) undoes "switch lowering" -- GCC/Clang sometimes compile
+a <code>switch</code> with too few or too sparse cases to an <code>if</code>/<code>else if</code> chain
+instead of a jump table. Fission's own switch recovery
+(<code>fission-midend-structuring</code>'s jump-table-based rule) has nothing to key
+off when there's no jump table, so this class of switch surfaces as nested
+<code>if</code>/<code>else</code> instead.</p>
+<p>angr's version is ~940 lines, operating on its own post-structuring graph
+region representation with a stable-hash equality check, multi-shape case
+detection (jump tables, cascading ifs, reused blocks), and Linux-only
+gating. This is a much narrower, HIR-presentation-layer port: detect a
+literal <code>if (x == c1) {..} else if (x == c2) {..} else if (x == c3) {..}
+else {..}</code> chain (structural equality on <code>x</code>, not a stable hash) and rebuild
+it as <code>HirStmt::Switch</code>.</p>
+<h2 id="2-the-fix">2. The fix<a class="headerlink" href="#2-the-fix" title="Permanent link">&para;</a></h2>
+<p><code>recover_switch_from_lowered_if_chain</code> (new, <code>render/presentation/mod.rs</code>):
+walks the tree looking for an <code>If</code> whose condition is <code>x == c</code> (or <code>c ==
+x</code>), then follows a single-statement <code>else_body</code> chain as long as each link
+is another <code>If</code> comparing the <em>same</em> <code>x</code> (via <code>HirExpr</code>'s derived
+<code>PartialEq</code>) against a distinct constant. Requires:</p>
+<ul>
+<li><code>expr_is_presentation_pure(x)</code> -- a <code>switch</code> evaluates its expression
+  exactly once; an if-chain evaluates it up to once per untaken arm.
+  Collapsing multiple evaluations into one is only safe when repeating or
+  dropping them can't be observed (rejects <code>Load</code>, general <code>Call</code>, etc. --
+  the same purity check <code>fold_if_else_pure_same_var_assign</code> and friends
+  already use for the identical reason).</li>
+<li>At least <code>MIN_LOWERED_SWITCH_CASES</code> (3) matched arms -- two reads fine as
+  plain <code>if</code>/<code>else if</code>; the switch only pays for itself once the repeated
+  <code>x ==</code> noise piles up.</li>
+<li>Distinct case values (a real C <code>switch</code> can't have duplicate labels).</li>
+</ul>
+<p>The printer already auto-inserts <code>break;</code> at the end of any case body that
+doesn't end in <code>Break</code>/<code>Return</code>/<code>Goto</code> (<code>printer.rs:1418-1424</code>), so case
+bodies are just the original <code>then_body</code>s moved verbatim -- no new control
+flow to get wrong.</p>
+<p><strong>Pass ordering matters here</strong>: placed <em>before</em>
+<code>fold_if_else_pure_same_var_assign</code>/<code>fold_if_else_pure_returns_to_select</code> in
+the fixed-point loop. Both of those want the same 2-arm <code>if</code>/<code>else</code> shape a
+3+-arm chain also matches one level at a time; letting them run first
+collapses the chain into nested ternaries before this pass ever sees it as
+a chain (caught during testing: an early version placed after those folds
+failed its own positive test for exactly this reason).</p>
+<h2 id="3-verification">3. Verification<a class="headerlink" href="#3-verification" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Three new tests: a 3-arm chain recovers to a <code>switch</code> with the printer
+  auto-inserting <code>break;</code>s; a 2-arm chain (below threshold) stays
+  <code>if</code>/<code>else</code>; an impure (<code>Load</code>-based) 3-arm chain declines to convert.</li>
+<li><code>cargo nextest run -p fission-pcode -p fission-midend-structuring -p fission-midend-normalize -p fission-midend-core -p fission-midend-prehir</code>:
+  1396/1396 passed.</li>
+<li>No panics across all 72 dev-corpus binaries (<code>--layer hir</code>).</li>
+<li>Corpus-wide <code>git</code>-stash A/B: total <code>switch (</code> occurrence count is
+  <strong>identical</strong> before and after (224 in both), across every one of the 72
+  files -- this pass never fired on this corpus at all. Traced why
+  directly: the corpus's one real small-case switch,
+  <code>classify_range</code> in <code>control_flow.c</code> (5 cases, sparse values 0/1-3/10 --
+  exactly the shape switch-lowering targets), compiles to three genuinely
+  different shapes across the tested compilers/opt-levels, <strong>none</strong> of
+  which is the linear equality chain this pass recognizes:</li>
+<li><code>gcc -O0</code>: a binary-search-style nested ternary
+    (<code>param_1 == 10 ? 2 : param_1 &gt; 10 ? ... : ...</code>), already collapsed by
+    Fission's own <code>fold_if_else_pure_returns_to_select</code> before this pass's
+    turn (it runs first in the pass order specifically to <em>prevent</em> that
+    for the shapes it does catch, but this particular tree isn't a chain
+    of single-<code>If</code>-per-<code>else_body</code> links, so it was never a candidate --
+    reordering wouldn't have helped here).</li>
+<li><code>clang -O0</code>: still raw <code>goto</code>-based range checks
+    (<code>if (!uVar10) goto L1; ...; if (uVar17 &lt; 3) goto L2; ...</code>), never
+    even reached structured <code>If</code> form -- <code>recover_if_else_from_gotos</code>'s own
+    scope doesn't cover this specific multi-target-range-check shape.</li>
+<li><code>gcc -O2</code>: range comparisons (<code>param_1 &lt;= 3</code>) mixed with flag
+    computation, not equality comparisons at all.</li>
+</ul>
+<p>None of these are the "clean cascading equality chain" this MVP targets.
+  The mechanism itself is verified correct (unit tests, including the
+  positive case), but this specific corpus's only switch-lowering candidate
+  doesn't exercise it -- a real, honest gap, not a hidden bug.</p>
+<h2 id="4-follow-up-round-binary-search-decision-trees">4. Follow-up round: binary-search decision trees<a class="headerlink" href="#4-follow-up-round-binary-search-decision-trees" title="Permanent link">&para;</a></h2>
+<p>Added <code>recover_switch_from_select_decision_tree</code>, targeting exactly the
+<code>gcc -O0</code> shape found above: a <code>Select</code> tree already collapsed by
+<code>fold_if_else_pure_returns_to_select</code>, where GCC's binary-search-style
+lowering mixes equality splits (real case boundaries) with range splits
+(<code>x &gt; c</code>, pure search-tree narrowing, no case value of their own).</p>
+<p><code>classify_direct_split</code> only ever recurses into a <code>Select</code> as "still inside
+the decision tree" when its condition is a <strong>direct</strong> comparison of the
+switch variable against a constant (<code>x CMP c</code>, or the bare zero-check idiom
+<code>!x</code>) -- never through arithmetic on the variable (<code>x - 1 &gt; 2</code>), and never
+into a condition on an unrelated variable. Anything else is treated as an
+opaque leaf, full stop, even if it happens to itself be a <code>Select</code> -- this
+is the load-bearing safety property: a case body's own unrelated ternary
+must never be mistaken for another tree split and decomposed. Every leaf the
+walk bottoms out at that isn't a matched <code>==</code> case is required to be
+<em>structurally identical</em> (<code>HirExpr</code>'s derived <code>PartialEq</code>) to every other
+such leaf before accepting a single <code>default:</code> -- these compiled trees
+routinely reach the same default value through several differently-shaped
+leaves (see <code>classify_range</code>'s three separate <code>param_1 &lt; 0 ? -1 : 3</code>
+occurrences below), so "first default leaf found" would be a guess, not a
+proof.</p>
+<p><strong>Verification</strong>: three new tests (a 3-case binary-search tree recovers
+correctly; inconsistent default leaves correctly decline; an unrelated
+ternary living inside a case's own result value survives untouched, proving
+the leaf/split boundary is drawn correctly) -- all against hand-built
+<code>Select</code> trees, since constructing a genuinely ambiguous or corruptible
+case through the full compile pipeline isn't practical. <code>cargo nextest run</code>
+across the same five crates: 1399/1399 passed. No panics across the full
+corpus. Corpus-wide A/B: <strong>still 224 total <code>switch (</code> occurrences, no
+change</strong> -- re-checked <code>classify_range</code> directly and it still doesn't
+convert, because its case-1/2/3 split uses a <em>biased</em> comparison
+(<code>param_1 - 1 &gt; 2</code>, not a direct <code>param_1 CMP const</code>), which
+<code>classify_direct_split</code> deliberately declines to walk through: proving an
+arithmetic transform like <code>x - k</code> is injective and order-preserving over
+the relevant domain (so the implied case-value set can be safely derived)
+is a meaningfully harder, higher-stakes correctness problem than anything
+attempted so far in this feature, and getting it wrong would silently
+produce a wrong case boundary rather than just missing an optimization.</p>
+<h2 id="5-third-round-the-biased-subtraction-range-check-resolved">5. Third round: the biased-subtraction range check, resolved<a class="headerlink" href="#5-third-round-the-biased-subtraction-range-check-resolved" title="Permanent link">&para;</a></h2>
+<p>Gap (1) above -- <code>classify_range</code>'s actual case-1/2/3 blocker,
+<code>param_1 - 1 &gt; 2</code> -- turned out tractable with a real correctness argument,
+not just a heuristic. Confirmed directly against the corpus's own NIR
+(<code>--layer nir</code>) that the compiled comparison is genuinely <strong>unsigned</strong>:
+<code>uVar36 = param_1; uVar36--; if (2 &lt; uVar36) goto default;</code> (Fission's own
+<code>uVar</code> naming already reflects <code>NirType::Int { signed: false }</code>, and the op
+is the unsigned <code>Gt</code>, not <code>SGt</code>). This is GCC/Clang's standard "bias and
+compare" range-check idiom -- <code>(unsigned)(x - lo) &lt;= (hi - lo)</code> for
+<code>lo &lt;= x &lt;= hi</code>, folding the lower-bound check into the upper-bound one via
+deliberate unsigned wraparound when <code>x &lt; lo</code>. Subtracting a constant is an
+exact bijection over any fixed-width integer domain, so once the comparison
+is confirmed unsigned, <code>(x - bias) CMP bound</code> translates to an <em>exact</em>
+<code>[range_lo, range_hi]</code> on <code>x</code> -- not an approximation.</p>
+<p>Added <code>DirectSplitOnVar::Range</code> to <code>classify_direct_split</code>, gated tightly:
+only fires for an <em>explicit</em> <code>Sub</code> on the switch variable (a bare
+<code>x CMP const</code> stays on the existing <code>NotEq</code> path, which recurses
+unconditionally into both arms and was already correct for that shape --
+see the bug below for why conflating the two paths is unsafe), only for the
+four genuinely unsigned ops (<code>Gt</code>/<code>Ge</code>/<code>Lt</code>/<code>Le</code>, never the signed
+variants), and capped at <code>MAX_RANGE_SPLIT_EXPANSION</code> (64) values to avoid
+flooding an unrelated large bounds check into a wall of case labels. The
+in-range arm only expands into per-value cases when it resolves to one flat
+leaf with no further splits of its own (verified the same way
+<code>collect_select_tree_leaves</code> already required for range-in-general);
+otherwise the whole split is declined, not guessed at. Case values that
+end up sharing one result expression (the normal outcome of a range
+expansion) are now grouped into one <code>HirSwitchCase { values: [1, 2, 3], .. }</code>
+rather than three separate <code>case 1: .. break; case 2: .. break;</code> blocks.</p>
+<p><strong>A second bug found and fixed while wiring this in</strong>: the existing
+<code>NotEq</code> handling recursed into <em>both</em> arms of every non-equality split
+unconditionally, which had been fine when <code>NotEq</code> only ever led to further
+splits or flat constants -- but <code>classify_range</code>'s conditional default,
+<code>param_1 &lt; 0 ? -1 : 3</code>, is itself a <code>NotEq</code>-shaped split (<code>SLt</code>) that
+recurring unconditionally shattered into two separately-tracked leaves
+(<code>-1</code> and <code>3</code>), which the "every default leaf must be identical" check then
+correctly (but unhelpfully) rejected as inconsistent -- silently declining
+the whole tree. Fixed with <code>subtree_has_real_case_boundary</code>: only descend
+into a <code>NotEq</code>/<code>Range</code> arm if it actually leads to a real case boundary
+(an <code>==</code> split, or a <code>Range</code> split whose in-range arm is a flat leaf)
+somewhere inside; an arm with no real boundary is the default's own
+internal logic and must stay intact as one leaf, exactly like the
+already-existing "unrelated case-body ternary" protection.</p>
+<p><strong>Verification</strong>: a new test reproduces <code>classify_range</code>'s decision tree
+node-for-node (same range-check shape, same four-times-repeated
+<code>x &lt; 0 ? -1 : 3</code> default, same nesting) and asserts full recovery.
+<code>cargo nextest run</code> across the same five crates: 1400/1400 passed. No
+panics across the full corpus. Corpus-wide A/B: <strong>exactly +1</strong> total
+<code>switch (</code> occurrence (224 → 225), isolated to precisely one file
+(<code>control_flow_gcc_O0.txt</code>) -- confirmed directly:</p>
+<div class="language-c highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kt">int</span><span class="w"> </span><span class="nf">classify_range</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">param_1</span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">param_1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="mi">10</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="mi">0</span><span class="p">:</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="mi">2</span><span class="p">:</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="mi">3</span><span class="p">:</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">        </span><span class="k">default</span><span class="o">:</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">param_1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">-1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Semantically identical to the original source (case order differs, which
+doesn't matter for a <code>switch</code>). Every other file in the corpus shows <em>zero</em>
+change in <code>switch</code>/<code>goto</code>/<code>return</code>/<code>break</code> counts -- the fix is precisely
+targeted, not incidentally touching anything else. <code>return</code> count in the
+one changed file moved from 106 to 109 (+3), exactly matching one
+<code>return &lt;nested ternary&gt;;</code> being replaced by four <code>return</code>s (one per case
+arm + default) -- the expected, correct shape of this exact restructuring.</p>
+<h2 id="6-remaining-known-limitations">6. Remaining known limitations<a class="headerlink" href="#6-remaining-known-limitations" title="Permanent link">&para;</a></h2>
+<p>Two gaps remain, both larger, separate undertakings:</p>
+<ol>
+<li><strong>Range comparisons without any equality splits</strong> (<code>gcc -O2</code>'s shape for
+   the same function: <code>param_1 &lt;= 3</code> mixed with flag computation, no bare
+   <code>==</code> case boundaries at all) -- a different codegen strategy this pass's
+   "equality split = case, range split = grouped cases" model doesn't cover
+   on its own (though the underlying <code>Range</code> machinery built this round is
+   at least a plausible foundation for it).</li>
+<li><strong>Raw, unstructured multi-target <code>goto</code> range checks</strong> (<code>clang -O0</code>'s
+   shape) -- never even reaches structured <code>If</code>/<code>Select</code> form, so no
+   presentation-layer pass can see it; would need <code>recover_if_else_from_gotos</code>
+   itself extended, a materially different and larger undertaking given
+   that pass's own scope and this session's earlier experience with how
+   easily adjacent-pass changes in this exact fixed-point loop can misfire
+   (see <code>docs/proposals/2026-08-06-cross-block-merge-binding-scalar-ssa-fallback.md</code>'s
+   two-iteration debugging story for the general shape of that risk).</li>
+</ol>
+<p>This feature is now well past the "few days" original estimate and close
+to angr's actual ~940-line scope, but has landed a real, verified,
+corpus-confirmed win. Flagging (1) and (2) as follow-ups rather than
+attempting them in this round.</p>
+<h2 id="7-fourth-round-normalize-level-flag-value-simplification-partial-progress-on-gap-1">7. Fourth round: normalize-level flag-value simplification (partial progress on gap 1)<a class="headerlink" href="#7-fourth-round-normalize-level-flag-value-simplification-partial-progress-on-gap-1" title="Permanent link">&para;</a></h2>
+<p>Investigated gap (1) directly: <code>classify_range</code> under <code>gcc -O2</code> computes each
+branch's result via raw x86 EFLAGS arithmetic (<code>zf</code>/<code>sf</code> materialized into a
+0/1 or -1/0 value, e.g. <code>-(uint)zf</code>), not a tree of direct comparisons. That
+turned out to be three separate, narrower gaps in the PreHir-level
+<code>fission-midend-normalize</code> crate (upstream of, and unrelated to, the
+presentation-layer switch-recovery machinery from rounds 1-3), all now fixed:</p>
+<ol>
+<li><strong><code>canonicalize_condition_expr</code>'s <code>(a - b) != 0 -&gt; a != b</code> identity was
+   condition-only.</strong> It's actually a pure value-level identity (<code>Sub</code>/<code>Xor</code>
+   is zero iff its operands are equal, in <em>any</em> consuming context, not just a
+   branch test) but was only ever invoked from <code>normalize_condition_expr</code>,
+   never from the generic bottom-up <code>normalize_expr</code> that runs on every
+   expression position. Split it out into its own <code>canonicalize_sub_xor_zero_compare</code>
+   (<code>arith/flags_cond.rs</code>) and wired it into <code>normalize_expr</code>'s fixed-point
+   chain (<code>pipeline/run.rs</code>). This alone fixed the <code>-O2</code> else-branch:
+   <code>(uint)(param_1 - 10 != 0) + 2</code> -&gt; <code>(uint)(param_1 != 10) + 2</code>.</li>
+<li><strong><code>Select</code>'s <code>cond</code> wasn't condition-normalized.</strong> <code>normalize_expr</code>'s
+   <code>Select</code> case called plain <code>normalize_expr(cond)</code> instead of
+   <code>normalize_condition_expr(cond)</code>, even though a ternary's <code>cond</code> is a
+   truthiness test with exactly the same semantics as an <code>if</code>/<code>while</code>
+   condition. Switched it to <code>normalize_condition_expr</code>, and additionally
+   taught <code>normalize_condition_expr</code> to recurse into <code>&amp;&amp;</code>/<code>||</code>/<code>!</code> operands
+   (<code>normalize_condition_logical_operands</code>) -- those operands are themselves
+   always boolean-context truthiness tests (that's what makes them valid
+   logical-connective operands), so the same condition-only rewrites are
+   equally safe on each one, not just on the connective as a whole. Without
+   this, <code>!zf &amp;&amp; (x &lt; 0) == 0</code> never simplified because <code>canonicalize_condition_expr</code>
+   only ever looked at the top-level AND node, which doesn't itself match any
+   rewrite pattern.</li>
+<li><strong>Flag-var reads outside a branch condition were never substituted at
+   all.</strong> <code>flag_recovery.rs</code>'s reaching-definition walker
+   (<code>recover_in_stmts_with_reaching_defs</code>) only ever called <code>recover_in_cond</code>
+   on actual <code>If</code>/<code>While</code>/<code>For</code> conditions; a plain <code>x = -(uint)zf;</code> (reading
+   a flag as an ordinary value) was invisible to it, and multiply-defined
+   flags (like <code>zf</code>, redefined per-branch here) don't qualify for the
+   separate whole-function single-definition fallback either -- so the flag
+   stayed a permanently-opaque <code>Var</code> reference. Added <code>recover_flag_value_use</code>
+   and wired it into every value-producing statement form the walker visits
+   (<code>Assign</code> RHS and non-<code>Var</code> LHS subexpressions, <code>Expr</code>, <code>Return</code>,
+   <code>Switch</code>'s scrutinee, <code>VaStart</code>), using the same per-branch reaching-def
+   map already threaded through for conditions.</li>
+</ol>
+<p>Net effect on <code>classify_range</code> (<code>gcc -O2</code>, <code>--layer hir</code>): the <code>then</code> branch
+went from an opaque <code>!zf &amp;&amp; xVar15 &lt; 0 == 0 ? 1 : xVar16</code> (with <code>xVar16</code>
+itself an un-recovered <code>-(uint)xVar15</code> flag materialization) to
+<code>xVar15 = uVar11 != 0; xVar16 = -(uint)xVar15; xVar15 = uVar20 &lt;= 0; if (!xVar15) rax = 1;</code>
+-- i.e. every flag is now a direct, correctly-signed comparison
+(<code>uVar11 != 0</code>, <code>uVar20 &lt;= 0</code>) instead of a raw EFLAGS variable. The <code>else</code>
+branch fully collapsed to <code>return (uint)((uint)(param_1 != 10) + 2);</code>.</p>
+<p><strong>Not yet a switch</strong>: the <code>then</code> branch is still an <code>if (!xVar15) rax = 1; return rax;</code>
+default-override shape with some interleaved dead stores (<code>rax = 0;</code> etc.)
+between the real default assignment and the override -- <code>conditional_move.rs</code>'s
+"Default-Override" fold requires the assign/if pair to be <em>exactly</em> adjacent,
+so the leftover dead code in between blocks it. Getting this the rest of the
+way to a recovered switch needs either a DCE pass to run first (to make the
+pair adjacent) or loosening that fold's adjacency requirement -- left as a
+further follow-up rather than attempted this round, since the value here
+(untangling raw flag-arithmetic into direct comparisons) is a general
+normalize-quality improvement independent of whether this specific function
+ever becomes a switch.</p>
+<p><strong>Verification</strong>: full workspace test suite green (only the 7 pre-existing,
+unrelated <code>fission-emulator</code> failures remain, same baseline as prior rounds);
+one existing unit test's expected string updated (<code>!uVar0 || uVar0 &lt; esi</code>
+instead of <code>uVar0 == 0 || uVar0 &lt; esi</code>) since it was pinning the pre-fix
+<code>==0</code> style that this round's condition-recursion fix now also applies one
+level deeper -- a legitimate style consequence, not a masked bug, since the
+codebase already applied this exact <code>==0 -&gt; !x</code> preference at the top level
+everywhere else. Corpus-wide git-stash A/B diff (209 binaries, 11,757
+functions): function count identical before/after (no functions gained or
+lost), total decompiled line count dropped ~0.8% (more dead flag stores now
+prunable once their reads are substituted), 148/209 files changed --
+spot-checked several diffs, all copy-propagation/flag-recovery quality
+improvements, no operator or value changes. Ran <code>fission_cli verify --tier
+ground-truth</code> (real-machine-code-oracle equivalence) across every function in
+two of the most heavily-diffed binaries (<code>advanced_patterns_gcc_O0.exe</code> and
+<code>c/advanced_patterns_clang_O0.exe</code>): pass/fail sets are
+byte-identical before vs. after in both (2 pre-existing divergences in the
+first, unrelated to this change and present identically on both sides; 0 in
+the second). <code>classify_range</code> itself also has a pre-existing ground-truth
+divergence on negative/<code>INT_MAX</code> inputs (confirmed present identically before
+and after this round's changes, so not introduced here) -- a separate,
+unrelated bug worth its own investigation, not chased down in this round.</p>
+<h2 id="8-fifth-round-closing-the-not-yet-a-switch-gap-from-round-4">8. Fifth round: closing the "not yet a switch" gap from round 4<a class="headerlink" href="#8-fifth-round-closing-the-not-yet-a-switch-gap-from-round-4" title="Permanent link">&para;</a></h2>
+<p>Directly addressed round 4's "not yet a switch" blocker: generalized
+<code>conditional_move.rs</code>'s Default-Override fold (<code>var = default; if (cond) { var
+= override; }</code>) to also match when exactly one single-use predicate-defining
+assignment sits between the default and its guarding <code>if</code> -- the common
+<code>t = cond_expr; if (t) {...}</code> / <code>if (!t) {...}</code> shape GCC/Clang routinely
+produce, which defeated the fold's strict positional adjacency even though
+nothing about the underlying shape differs. Safety bar: the predicate's whole-
+function use count (via a <code>DefUseMap</code> built once per <code>apply_conditional_move_pass</code>
+call) must be exactly 1, its definition must be pure
+(<code>!expr_has_side_effects</code>), and only the two unambiguous cond shapes (<code>pred</code>
+bare or <code>!pred</code>) are inlined -- never a compound condition. <code>classify_range</code>
+(<code>gcc -O2</code>) now collapses fully: <code>return uVar20 &gt; 0 ? 1 : xVar16;</code> for the
+<code>then</code> branch, matching the <code>else</code> branch's earlier full collapse -- both
+branches are now a single <code>Return(Select(..))</code>, the exact shape
+<code>recover_switch_from_select_decision_tree</code> (round 2) already knows how to
+turn into a <code>switch</code>. (A residual gap remains before that fold can actually
+fire: interior dead stores like <code>uVar11 = param_1;</code> survive in the branch
+body alongside the collapsed return, so <code>fold_if_else_pure_returns_to_select</code>
+-- which requires each branch to be <em>exactly</em> <code>[Return(expr)]</code> -- still
+declines. That's a normalize-level dead/uninlined-copy cleanup gap, not a
+switch-recovery one; flagging as a further follow-up rather than chasing it
+this round.)</p>
+<p><strong>Verification</strong>: full workspace test suite green, same 7 pre-existing
+<code>fission-emulator</code> failures as every prior round, no new failures. Corpus-wide
+git-stash A/B diff (209 binaries): function count identical (11,757 before
+and after), only 15/209 files changed (much narrower than round 4's 148, as
+expected for a positionally-scoped fold generalization), total line count
+dropped slightly (more full return-collapses now DCE-eligible). Ran
+<code>fission_cli verify --tier ground-truth</code> across every function in two x86
+binaries that showed this diff (<code>control_flow_gcc_O1.exe</code>,
+<code>control_flow_gcc_O2.exe</code>): zero new divergences in either, and in <em>both</em>
+binaries one additional function moved from <code>Unsupported</code> to <code>Equivalent</code>
+(the fold's inlining made an unsigned-overflow-checked min/max comparator
+simple enough for the verifier's sampler to model) -- net evidence in favor
+of correctness, not just neutral. One diff on an aarch64 binary
+(<code>control_flow_gcc-aarch64_O0</code>, <code>fde_unencoded_compare</code>) showed a constant
+changing its printed form from <code>-1</code> to <code>4294967295</code> inside the newly-merged
+<code>Select</code>; traced this to the transform doing an exact <code>.clone()</code> of the
+original <code>PreHirExpr::Const</code> node (same underlying value, unrelated
+downstream type-inference/printer logic evidently renders the same bit
+pattern differently once it's a <code>Select</code> operand vs. a bare statement RHS) --
+ground-truth verification wasn't available for this specific function
+(pointer-arg sampling unsupported), so this is reasoned-through rather than
+directly proven; flagging as a loose end worth a direct look if it recurs
+elsewhere, not a confirmed bug.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
